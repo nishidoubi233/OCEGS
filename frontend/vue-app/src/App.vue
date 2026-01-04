@@ -5,14 +5,40 @@
       <a-layout-header class="app-header">
         <div class="header-content">
           <div class="logo-section">
-            <span class="logo-icon">🩺</span>
-            <span class="logo-text">OCEGS</span>
+            <router-link to="/" class="logo-link">
+              <span class="logo-icon">🩺</span>
+              <span class="logo-text">OCEGS</span>
+            </router-link>
           </div>
           <nav class="nav-links">
             <router-link to="/" class="nav-link">Home</router-link>
             <router-link to="/consultation" class="nav-link">Consultation</router-link>
-            <!-- Step 2: Auth links -->
-            <!-- <router-link to="/login" class="nav-link">Login</router-link> -->
+            
+            <!-- 认证相关链接 -->
+            <!-- Auth related links -->
+            <template v-if="authStore.isAuthenticated">
+              <a-dropdown>
+                <a class="user-menu" @click.prevent>
+                  <span class="user-avatar">👤</span>
+                  <span class="user-email">{{ authStore.user?.email }}</span>
+                  <span class="dropdown-arrow">▾</span>
+                </a>
+                <template #overlay>
+                  <a-menu>
+                    <a-menu-item key="profile" disabled>
+                      <span>👤 Profile (Coming Soon)</span>
+                    </a-menu-item>
+                    <a-menu-divider />
+                    <a-menu-item key="logout" @click="handleLogout">
+                      <span>🚪 Sign Out</span>
+                    </a-menu-item>
+                  </a-menu>
+                </template>
+              </a-dropdown>
+            </template>
+            <template v-else>
+              <router-link to="/login" class="nav-link auth-link">Sign In</router-link>
+            </template>
           </nav>
         </div>
       </a-layout-header>
@@ -32,9 +58,16 @@
 </template>
 
 <script setup>
-import { theme } from 'ant-design-vue'
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { theme, message } from 'ant-design-vue'
+import { useAuthStore } from '@/stores/auth'
 
-// Custom theme matching the user's design (cyan/teal primary color)
+const router = useRouter()
+const authStore = useAuthStore()
+
+// 主题配置 - 青绿色医疗主题
+// Theme config - Cyan/teal medical theme
 const themeConfig = {
   algorithm: theme.defaultAlgorithm,
   token: {
@@ -42,6 +75,20 @@ const themeConfig = {
     borderRadius: 10,
     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
   },
+}
+
+// 初始化认证状态
+// Initialize auth state
+onMounted(async () => {
+  await authStore.initialize()
+})
+
+// 处理登出
+// Handle logout
+async function handleLogout() {
+  await authStore.logout()
+  message.success('You have been signed out')
+  router.push('/')
 }
 </script>
 
@@ -146,5 +193,65 @@ body {
   font-size: 12px;
   color: var(--muted);
   margin-top: 4px !important;
+}
+
+/* Logo链接样式 */
+/* Logo link styles */
+.logo-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+/* 用户菜单样式 */
+/* User menu styles */
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: var(--primary-weak);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.user-menu:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.user-avatar {
+  font-size: 16px;
+}
+
+.user-email {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.dropdown-arrow {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* 登录链接样式 */
+/* Auth link styles */
+.auth-link {
+  padding: 6px 16px;
+  border-radius: 20px;
+  background: var(--primary);
+  color: white !important;
+  font-weight: 500;
+}
+
+.auth-link:hover {
+  filter: brightness(1.1);
 }
 </style>

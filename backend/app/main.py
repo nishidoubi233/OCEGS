@@ -87,11 +87,13 @@ async def root():
 
 # ============================================================
 # API Routers (to be added in subsequent steps)
+# API路由（按步骤添加）
 # ============================================================
 
 # Step 2: Authentication
-# from app.auth.router import router as auth_router
-# app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
+# 认证路由
+from app.auth.router import router as auth_router
+app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 
 # Step 2: Users
 # from app.users.router import router as users_router
