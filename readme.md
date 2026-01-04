@@ -1,4 +1,4 @@
-# OCEGS 项目现状与部署指南 (Project Progress & Deployment Guide)
+# OCEGS 项目与部署指南 (Project Progress & Deployment Guide)
 
 本文件为您提供 OCEGS 项目的当前开发进度汇总，以及在 Windows 11 环境下从零开始部署系统的手把手教学。
 
@@ -119,4 +119,4 @@
 | **医生团队管理** | 启用/禁用 AI 医生、为每个医生配置不同模型 |
 
 ---
-*注：本指导将随着后续功能的上线持续更新。*
+*注：本项目仍在开发中，如有问题请联系开发者。*
