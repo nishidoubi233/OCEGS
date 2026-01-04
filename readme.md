@@ -55,23 +55,27 @@
 3.  **创建虚拟环境**:
     ```bash
     python -m venv venv
+    ```
+4.  **激活虚拟环境** (Windows):
+    ```bash
     .\venv\Scripts\activate
     ```
-4.  **安装依赖**:
+5.  **安装依赖**:
     ```bash
     pip install -r requirements.txt
     ```
-5.  **配置文件**:
+6.  **配置文件**:
     - 在 `backend` 文件夹找到 `.env.example`。
-    - 将其重命名为 `.env`。
+    - 将其**复制**并重命名为 `.env`。
     - 使用记事本打开 `.env`，修改以下内容：
       - `DATABASE_URL`: `postgresql+asyncpg://用户名:密码@localhost:5432/ocegs`
       - `SILICONFLOW_API_KEY`: 填入您的 API Key。
       - `ADMIN_PASSWORD`: 可选修改管理员密码。
-6.  **启动后端**:
+7.  **启动后端** (使用 uvicorn):
     ```bash
-    python main.py
+    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
     ```
+    启动成功后，您可以在浏览器访问 `http://localhost:8000/docs` 查看 API 文档。
 
 ### 第三步：前端部署 (Frontend Setup)
 1.  **开启一个新的终端窗口**。
