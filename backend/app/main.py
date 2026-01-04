@@ -105,8 +105,9 @@ from app.patients.router import router as patients_router
 app.include_router(patients_router, prefix="/api/patients", tags=["Patients"])
 
 # Step 4: AI Doctor
-# from app.ai_doctor.router import router as ai_doctor_router
-# app.include_router(ai_doctor_router, prefix="/api/consultation", tags=["AI Consultation"])
+# AI 问诊路由
+from app.ai_doctor.router import router as ai_doctor_router
+app.include_router(ai_doctor_router, prefix="/api/consultation", tags=["AI Consultation"])
 
 # Step 6: Emergency
 # from app.emergency.router import router as emergency_router
@@ -120,30 +121,3 @@ app.include_router(patients_router, prefix="/api/patients", tags=["Patients"])
 # from app.notifications.router import router as notifications_router
 # app.include_router(notifications_router, prefix="/api/notifications", tags=["Notifications"])
 
-
-# ============================================================
-# Temporary Chat Endpoint (for frontend template testing)
-# ============================================================
-
-from pydantic import BaseModel
-
-class ChatRequest(BaseModel):
-    message: str
-    deepThink: bool = False
-
-class ChatResponse(BaseModel):
-    reply: str
-
-@app.post("/api/chat", response_model=ChatResponse, tags=["Chat"])
-async def temporary_chat(request: ChatRequest):
-    """
-    Temporary chat endpoint for frontend testing.
-    Will be replaced by full AI Doctor implementation in Step 4.
-    """
-    # Simple echo response for now
-    if request.deepThink:
-        reply = f"[Deep Thinking Mode] I received your question: '{request.message}'. Full AI consultation will be implemented in Step 4."
-    else:
-        reply = f"I received your question: '{request.message}'. Full AI consultation will be implemented in Step 4."
-    
-    return ChatResponse(reply=reply)
