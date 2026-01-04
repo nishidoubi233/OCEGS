@@ -43,6 +43,40 @@
       </div>
     </div>
 
+    <!-- Consultation History -->
+    <div class="history-section card" v-if="isLoggedIn">
+      <div class="section-header">
+        <h2 class="section-title">📜 Consultation History</h2>
+        <router-link to="/consultation?tab=history" class="view-all" v-if="consultationHistory.length > 0">View All →</router-link>
+      </div>
+      
+      <div v-if="loadingHistory" class="loading-state">
+        <a-spin />
+        <span>Loading history...</span>
+      </div>
+      
+      <div v-else-if="consultationHistory.length === 0" class="empty-state">
+        <p>No consultation records yet.</p>
+        <router-link to="/consultation" class="start-link">Start your first consultation →</router-link>
+      </div>
+      
+      <div v-else class="history-list">
+        <div 
+          v-for="item in consultationHistory.slice(0, 5)" 
+          :key="item.id" 
+          class="history-item"
+        >
+          <div class="history-info">
+            <span class="history-date">{{ formatDate(item.created_at) }}</span>
+            <a-tag :color="getStatusColor(item.status)">{{ item.status }}</a-tag>
+          </div>
+          <div class="history-triage">
+            Triage Level: {{ item.triage_level || 'N/A' }}
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- System Status -->
     <div class="status-section card">
       <h2 class="section-title">System Status</h2>
@@ -63,21 +97,63 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
+import aiDoctorApi from '@/api/aiDoctor'
 
+const authStore = useAuthStore()
 const backendStatus = ref('checking')
+const consultationHistory = ref([])
+const loadingHistory = ref(false)
+
+const isLoggedIn = computed(() => authStore.isAuthenticated)
 
 onMounted(async () => {
+  // Check backend health
   try {
-    // 直接请求 /health 而非通过 /api 前缀
-    // Request /health directly, not through /api prefix
     const response = await axios.get('/health')
     backendStatus.value = response.data.status
   } catch (error) {
     backendStatus.value = 'error'
   }
+  
+  // Load consultation history if logged in
+  if (isLoggedIn.value) {
+    loadingHistory.value = true
+    try {
+      const res = await aiDoctorApi.getMyHistory()
+      consultationHistory.value = res.data || []
+    } catch (err) {
+      console.error('Failed to load history:', err)
+    } finally {
+      loadingHistory.value = false
+    }
+  }
 })
+
+function formatDate(dateStr) {
+  if (!dateStr) return 'N/A'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function getStatusColor(status) {
+  const colors = {
+    'COMPLETED': 'success',
+    'DISCUSSING': 'processing',
+    'VOTING': 'warning',
+    'SUMMARIZING': 'cyan',
+    'FAILED': 'error'
+  }
+  return colors[status] || 'default'
+}
 </script>
 
 <style scoped>
@@ -182,5 +258,97 @@ onMounted(async () => {
 
 .status-section {
   margin-top: 8px;
+}
+
+/* History Section Styles */
+.history-section {
+  margin-top: 8px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.view-all {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.view-all:hover {
+  text-decoration: underline;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  justify-content: center;
+  color: var(--muted);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+}
+
+.empty-state p {
+  margin: 0 0 12px;
+}
+
+.start-link {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.start-link:hover {
+  text-decoration: underline;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg);
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.history-item:hover {
+  background: var(--primary-weak);
+}
+
+.history-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.history-date {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.history-triage {
+  font-size: 13px;
+  color: var(--muted);
 }
 </style>

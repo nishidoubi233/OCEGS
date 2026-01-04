@@ -14,11 +14,64 @@
       </div>
     </div>
 
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <button 
+        class="tab-btn" 
+        :class="{ active: activeTab === 'new' }" 
+        @click="activeTab = 'new'"
+      >
+        ➕ New Consultation
+      </button>
+      <button 
+        class="tab-btn" 
+        :class="{ active: activeTab === 'history' }" 
+        @click="activeTab = 'history'; loadHistory()"
+      >
+        📜 Consultation History
+      </button>
+    </div>
+
     <!-- Main Content -->
     <div class="view-body">
-      <!-- 初始输入 & 分诊评估 & 会诊展示 -->
-      <!-- Initial Input & Triage Evaluation & Consultation Display -->
-      <div class="consultation-container card">
+      <!-- History Tab -->
+      <div v-if="activeTab === 'history'" class="history-tab card">
+        <div v-if="loadingHistory" class="loading-state">
+          <a-spin />
+          <span>Loading consultation history...</span>
+        </div>
+        
+        <div v-else-if="historyList.length === 0" class="empty-state">
+          <p>📭 No consultation records yet.</p>
+          <a-button type="primary" @click="activeTab = 'new'">Start Your First Consultation</a-button>
+        </div>
+        
+        <div v-else class="history-list">
+          <div 
+            v-for="item in historyList" 
+            :key="item.id" 
+            class="history-card"
+          >
+            <div class="history-card-header">
+              <span class="history-date">{{ formatHistoryDate(item.created_at) }}</span>
+              <a-tag :color="getStatusColor(item.status)">{{ item.status }}</a-tag>
+            </div>
+            <div class="history-card-body">
+              <div class="history-info-row">
+                <span class="label">Triage Level:</span>
+                <span class="value">{{ item.triage_level || 'N/A' }}</span>
+              </div>
+              <div class="history-info-row" v-if="item.doctors_config">
+                <span class="label">Doctors:</span>
+                <span class="value">{{ (item.doctors_config || []).map(d => d.name).join(', ') || 'N/A' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Consultation Tab (existing content) -->
+      <div v-else class="consultation-container card">
         <template v-if="currentPhase === 'input'">
           <!-- 初始输入表单 -->
           <!-- Initial Input Form -->
@@ -207,13 +260,62 @@
  * Core Consultation View (Reused logic)
  */
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useConsultationStore } from '@/stores/consultation'
 import ChatDisplay from '@/components/consultation/ChatDisplay.vue'
 import EmergencyGuide from '@/components/consultation/EmergencyGuide.vue'
 import { marked } from 'marked'
 import { message } from 'ant-design-vue'
+import aiDoctorApi from '@/api/aiDoctor'
 
 const consultStore = useConsultationStore()
+const route = useRoute()
+
+// Tab state: 'new' or 'history'
+const activeTab = ref(route.query.tab === 'history' ? 'history' : 'new')
+
+// History list
+const historyList = ref([])
+const loadingHistory = ref(false)
+
+// Load history function
+async function loadHistory() {
+  if (loadingHistory.value) return
+  loadingHistory.value = true
+  try {
+    const res = await aiDoctorApi.getMyHistory()
+    historyList.value = res.data || []
+  } catch (err) {
+    console.error('Failed to load history:', err)
+  } finally {
+    loadingHistory.value = false
+  }
+}
+
+// Format date for history display
+function formatHistoryDate(dateStr) {
+  if (!dateStr) return 'N/A'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// Get status color
+function getStatusColor(status) {
+  const colors = {
+    'COMPLETED': 'success',
+    'DISCUSSING': 'processing',
+    'VOTING': 'warning',
+    'SUMMARIZING': 'cyan',
+    'FAILED': 'error'
+  }
+  return colors[status] || 'default'
+}
 
 // 视图状态: 'input', 'triage', 'chat', 'emergency'
 // View phase: 'input', 'triage', 'chat', 'emergency'
@@ -223,6 +325,13 @@ const currentPhase = ref('input')
 // Case input form
 const caseForm = reactive({
   initial_problem: ''
+})
+
+// Load history on mount if tab is history
+onMounted(() => {
+  if (activeTab.value === 'history') {
+    loadHistory()
+  }
 })
 
 // 当前状态文本
@@ -365,6 +474,113 @@ const resetConsultation = () => {
 .status-badge.voting { background: #fff3e0; color: #f57c00; }
 .status-badge.summarizing { background: #f3e5f5; color: #7b1fa2; }
 .status-badge.completed { background: #e8f5e9; color: #388e3c; }
+
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tab-btn {
+  padding: 10px 20px;
+  border: 2px solid #eee;
+  background: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  border-color: #12c6c6;
+  color: #12c6c6;
+}
+
+.tab-btn.active {
+  background: #12c6c6;
+  border-color: #12c6c6;
+  color: white;
+}
+
+/* History Tab */
+.history-tab {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.history-card {
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 16px 20px;
+  border: 1px solid #eee;
+  transition: all 0.2s;
+}
+
+.history-card:hover {
+  border-color: #12c6c6;
+  box-shadow: 0 4px 12px rgba(18, 198, 198, 0.1);
+}
+
+.history-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.history-date {
+  font-weight: 600;
+  color: #333;
+}
+
+.history-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-info-row {
+  display: flex;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.history-info-row .label {
+  color: #888;
+}
+
+.history-info-row .value {
+  color: #333;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 48px;
+  color: #888;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px;
+  color: #888;
+}
+
+.empty-state p {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
 
 .view-body {
   display: flex;
