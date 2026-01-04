@@ -105,3 +105,12 @@ class SystemStatusResponse(BaseModel):
     active_consultations: int = 0
     default_provider: str = "siliconflow"
     default_model: str = "Pro/THUDM/glm-4-9b-chat"
+
+
+class FetchModelsRequest(BaseModel):
+    """
+    获取模型列表请求
+    Fetch models list request
+    """
+    api_key: str
+    base_url: Optional[str] = None

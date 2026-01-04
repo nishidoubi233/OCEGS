@@ -57,21 +57,33 @@ def parse_vote_json(text: str) -> Optional[Dict[str, Any]]:
 # Core Consultation Services
 # ============================================================
 
-async def perform_triage(db: AsyncSession, initial_problem: str) -> Dict[str, Any]:
+async def perform_triage(db: AsyncSession, initial_problem: str, patient_profile: dict = None) -> Dict[str, Any]:
     """
-    进行 AI 分诊评估
-    Perform AI triage evaluation
+    进行 AI 分诊评估，包含用户资料和医生分配
+    Perform AI triage evaluation with patient profile and doctor assignment
     """
-    prompt_data = prompts.build_triage_prompt(initial_problem)
+    prompt_data = prompts.build_triage_prompt(initial_problem, patient_profile)
     
-    # 默认使用 SiliconFlow 或 OpenAI
-    # Default to SiliconFlow or OpenAI for triage
-    from app.config import settings
-    provider_name = "siliconflow" if settings.siliconflow_api_key else "openai"
-    api_key = settings.siliconflow_api_key if provider_name == "siliconflow" else settings.openai_api_key
-    model = "Pro/THUDM/glm-4-9b-chat" if provider_name == "siliconflow" else "gpt-3.5-turbo"
+    # 从 SystemSetting 获取分诊配置 (优先使用专用配置，否则回退全局)
+    # Get triage config (prefer triage-specific, fallback to global)
+    from app.admin.models import SystemSetting
+    stmt = select(SystemSetting).where(SystemSetting.key.in_([
+        "default_api_key", "default_base_url", "default_model",
+        "triage_api_key", "triage_base_url", "triage_model"
+    ]))
+    result = await db.execute(stmt)
+    settings_list = result.scalars().all()
+    settings_map = {s.key: s.value for s in settings_list}
     
-    provider = AIProviderFactory.get_provider(provider_name, api_key, model)
+    # 优先使用分诊专用配置
+    # Prefer triage-specific settings
+    api_key = settings_map.get("triage_api_key") or settings_map.get("default_api_key", "")
+    base_url = settings_map.get("triage_base_url") or settings_map.get("default_base_url", "")
+    model = settings_map.get("triage_model") or settings_map.get("default_model", "gpt-3.5-turbo")
+    
+    # 使用 OpenAI 兼容模式
+    # Use OpenAI compatible mode
+    provider = AIProviderFactory.get_provider("openai", api_key, model, base_url)
     
     content = await provider.chat_completion([
         {"role": "system", "content": prompt_data["system"]},
@@ -88,8 +100,15 @@ async def perform_triage(db: AsyncSession, initial_problem: str) -> Dict[str, An
             "is_emergency": False,
             "emergency_advice": "Please consult a doctor soon.",
             "risks": ["Unable to assess specific risks"],
-            "summary": "AI was unable to parse triage results clearly."
+            "summary": "AI was unable to parse triage results clearly.",
+            "assigned_doctors": ["pulmonologist"]  # Default fallback doctor
         }
+    
+    # 确保有 assigned_doctors 字段
+    # Ensure assigned_doctors field exists
+    if "assigned_doctors" not in result or not result["assigned_doctors"]:
+        result["assigned_doctors"] = ["pulmonologist"]  # Default
+    
     return result
 
 
@@ -98,43 +117,33 @@ async def create_consultation(
     user_id: UUID,
     initial_problem: str,
     patient_profile_id: Optional[UUID] = None,
-    doctors: Optional[List[Dict[str, Any]]] = None
+    patient_profile: Optional[Dict[str, Any]] = None
 ) -> Consultation:
     """
-    发起新问诊
-    Create a new consultation
+    发起新问诊，使用分诊自动分配医生
+    Create a new consultation with triage-assigned doctors
     """
-    # 1. 自动执行分诊
-    # 1. Perform automatic triage
-    triage_result = await perform_triage(db, initial_problem)
+    # 1. 自动执行分诊，传入用户资料
+    # 1. Perform automatic triage with patient profile
+    triage_result = await perform_triage(db, initial_problem, patient_profile)
     triage_level = triage_result.get("severity", 3)
+    assigned_doctor_ids = triage_result.get("assigned_doctors", ["pulmonologist"])
 
-    # 2. 如果没提供医生配置，根据分诊科室选择
-    # 2. If no doctors provided, choose based on triage department
+    # 2. 根据分诊结果中的 assigned_doctors 匹配预设医生
+    # 2. Match assigned doctor IDs to preset doctors
+    doctors = []
+    preset_map = {p["id"]: p for p in prompts.DOCTOR_PRESETS}
+    
+    for doc_id in assigned_doctor_ids:
+        if doc_id in preset_map:
+            doctor = {**preset_map[doc_id], "status": "active"}
+            doctors.append(doctor)
+    
+    # 如果没有匹配到任何医生，使用呼吸科作为默认
+    # If no doctors matched, use pulmonologist as default
     if not doctors:
-        # 简单实现：尝试匹配科室名称到预设
-        matched_doctor = None
-        dept = triage_result.get("department", "").lower()
-        for preset in prompts.DOCTOR_PRESETS:
-            if preset["name"].lower() in dept or preset["name_cn"] in dept:
-                matched_doctor = preset
-                break
-        
-        if not matched_doctor:
-            matched_doctor = prompts.DOCTOR_PRESETS[0] # 默认心血管
-            
-        doctors = [
-            {**matched_doctor, "provider": "siliconflow", "model": "Pro/THUDM/glm-4-9b-chat", "status": "active"}
-        ]
-        # 如果不是紧急情况，可以多加一个全科建议医生
-        if triage_level < 4:
-            doctors.append({**prompts.DOCTOR_PRESETS[8], "provider": "siliconflow", "model": "Pro/THUDM/glm-4-9b-chat", "status": "active"}) # 儿科/全科
-    else:
-        # 确保每个医生都有 active 状态
-        # Ensure each doctor has active status
-        for d in doctors:
-            if "status" not in d:
-                d["status"] = "active"
+        default_doc = preset_map.get("pulmonologist", prompts.DOCTOR_PRESETS[1])
+        doctors = [{**default_doc, "status": "active"}]
 
     consultation = Consultation(
         user_id=user_id,
@@ -197,12 +206,12 @@ async def run_next_step(db: AsyncSession, consultation_id: UUID) -> Dict[str, An
     doctors = consultation.doctors_config
     active_doctors = [d for d in doctors if d.get("status") == "active"]
     
-    # 如果已经没有活跃医生或是达到结束条件，跳转到总结
-    # If no active doctors or end condition met, jump to summary
-    if len(active_doctors) <= 1:
-        consultation.status = ConsultationStatus.SUMMARIZING
+    # 如果已经没有活跃医生，直接完成
+    # If no active doctors, complete directly
+    if not active_doctors:
+        consultation.status = ConsultationStatus.COMPLETED
         await db.commit()
-        return await _handle_summarizing(db, consultation, active_doctors)
+        return {"status": "completed", "message": "Consultation completed."}
 
     # 1. 讨论阶段 (DISCUSSING)
     # 1. Discussion Phase
@@ -213,11 +222,7 @@ async def run_next_step(db: AsyncSession, consultation_id: UUID) -> Dict[str, An
         
         # 本轮发言过的医生
         # Doctors who spoke this round
-        # 这里简化逻辑：每轮所有活跃医生轮流说一次
-        # Simplified: all active doctors speak once per round
         spoken_ids = []
-        # 从最近的消息往前找，找到本轮开始后的发言
-        # In a real impl, we'd track "round" properly, here we just find who hasn't spoken yet
         for d in active_doctors:
             last_msg = next((m for m in reversed(consultation.messages) if m.doctor_id == d["id"]), None)
             if last_msg:
@@ -230,48 +235,88 @@ async def run_next_step(db: AsyncSession, consultation_id: UUID) -> Dict[str, An
         if next_doctor:
             return await _call_doctor_discussion(db, consultation, next_doctor)
         else:
-            # 本轮讨论结束，进入投票阶段
-            # Discussion finished, enter voting
-            consultation.status = ConsultationStatus.VOTING
+            # 本轮讨论结束，直接进入 COMPLETED 状态（禁用投票环节）
+            # Discussion finished, go directly to COMPLETED (voting disabled)
+            consultation.status = ConsultationStatus.COMPLETED
             await db.commit()
-            return {"status": "transition", "new_phase": "voting", "message": "All doctors have spoken. Entering evaluation phase."}
+            return {"status": "completed", "message": "All doctors have provided their assessments. Consultation complete."}
 
-    # 2. 投票阶段 (VOTING)
-    # 2. Voting Phase
-    if consultation.status == ConsultationStatus.VOTING:
-        # 找出还没投票的医生
-        # Find doctors who haven't voted yet in this round
-        # 在数据库中，我们通过消息历史来判断。投票结果存为 ConsultationMessage 角色 system
-        voted_ids = []
-        for m in reversed(consultation.messages):
-            if m.sender_type == "system" and "评估结果" in m.content:
-                # 解析消息内容中的 ID... 这只是演示，实际可能需要 Message 扩展字段
-                # 为简单起见，我们在 doctors_config 中临时存一个投票计数
-                pass
+    # 2. 投票阶段 (VOTING) - 已禁用
+    # 2. Voting Phase - DISABLED
+    # if consultation.status == ConsultationStatus.VOTING:
+    #     return await _handle_voting_and_elimination(db, consultation, active_doctors)
 
-        # 简化版：后端一次性处理所有投票并淘汰
-        # Simplified: Backend handles all votes at once and eliminates one
-        return await _handle_voting_and_elimination(db, consultation, active_doctors)
-
-    # 3. 总结阶段 (SUMMARIZING)
-    # 3. Summarizing Phase
+    # 3. 总结阶段 (SUMMARIZING) - 用户追问时可能触发
+    # 3. Summarizing Phase - may be triggered on follow-up
     if consultation.status == ConsultationStatus.SUMMARIZING:
         return await _handle_summarizing(db, consultation, active_doctors)
 
-    return {"status": consultation.status}
+    return {"status": str(consultation.status)}
 
+
+async def handle_follow_up(db: AsyncSession, consultation_id: UUID, message: str) -> Dict[str, Any]:
+    """
+    处理用户追问 - 保存消息并让所有医生再次回复
+    Handle user follow-up - save message and have all doctors respond again
+    """
+    consultation = await get_consultation_full(db, consultation_id)
+    if not consultation:
+        return {"error": "Consultation not found"}
+    
+    # 保存用户追问消息
+    # Save user's follow-up message
+    follow_up_msg = ConsultationMessage(
+        consultation_id=consultation.id,
+        sender_type="patient",
+        content=message
+    )
+    db.add(follow_up_msg)
+    
+    # 重置状态为 DISCUSSING，让医生们重新发言
+    # Reset status to DISCUSSING so doctors respond again
+    consultation.status = ConsultationStatus.DISCUSSING
+    
+    # 清除医生本轮已发言标记（通过重置，医生们会再说一轮）
+    # Clear doctor spoken flags for this round
+    doctors = consultation.doctors_config
+    for d in doctors:
+        d["spoken_this_round"] = False
+    consultation.doctors_config = doctors
+    
+    await db.commit()
+    
+    # 返回成功信息，前端可以继续调用 run_next_step
+    # Return success, frontend can continue calling run_next_step
+    return {
+        "status": "follow_up_received",
+        "message": "Follow-up question received. Doctors will respond.",
+        "consultation_status": str(consultation.status)
+    }
 
 async def _call_doctor_discussion(db: AsyncSession, consultation: Consultation, doctor: Dict[str, Any]) -> Dict[str, Any]:
     """
     调用单个医生的讨论发言
     Call single doctor's discussion response
     """
-    # 准备病历
-    # Prepare case info
+    # 准备病历 - 从 patient_profile 获取详细信息
+    # Prepare case info - get details from patient_profile
     case_info = {
-        "name": "Patient", # 实际应从 Profile 获取
-        "current_problem": consultation.messages[0].content # 首条消息
+        "name": "Patient",
+        "current_problem": next((m.content for m in consultation.messages if m.sender_type == "patient"), "")
     }
+    
+    # 如果有患者资料，加载并添加到 case_info
+    # If patient profile exists, load and add to case_info
+    if consultation.patient_profile_id:
+        from app.user.models import PatientProfile
+        profile = await db.get(PatientProfile, consultation.patient_profile_id)
+        if profile:
+            case_info["name"] = profile.name or "Patient"
+            case_info["age"] = profile.age
+            case_info["gender"] = profile.gender
+            case_info["medical_history"] = profile.medical_history
+            case_info["allergies"] = profile.allergies
+            case_info["current_medications"] = profile.current_medications
     
     # 构建提示词
     # Build prompt
@@ -283,21 +328,18 @@ async def _call_doctor_discussion(db: AsyncSession, consultation: Consultation, 
         doctor["name"]
     )
     
-    # 实例化提供商并调用
-    # Instantiate provider and call
-    provider = AIProviderFactory.get_provider(
-        doctor["provider"], 
-        doctor.get("apiKey") or "", # 实际从环境变量获取
-        doctor["model"],
-        doctor.get("baseUrl")
-    )
+    # 获取 AI 配置 (per-doctor > global fallback)
+    # Get AI config (per-doctor > global fallback)
+    api_key, base_url, model = await _get_ai_config(db, doctor)
     
-    # TODO: 这里应该从后台环境变量注入 API Key 如果医生配置没带
-    # In V1, we injected SF_API_KEY if not present
-    if not provider.api_key:
-        from app.config import settings
-        if doctor["provider"] == "siliconflow":
-            provider.api_key = settings.ai_api_keys.get("siliconflow")
+    # 实例化提供商并调用 (统一使用 OpenAI 兼容模式)
+    # Instantiate provider and call (use unified OpenAI compatible mode)
+    provider = AIProviderFactory.get_provider(
+        "openai",  # 统一使用 OpenAI 兼容模式
+        api_key or "",
+        model,
+        base_url
+    )
     
     content = await provider.chat_completion([
         {"role": "system", "content": prompt_data["system"]},
@@ -322,6 +364,45 @@ async def _call_doctor_discussion(db: AsyncSession, consultation: Consultation, 
         "doctor_name": doctor["name"],
         "doctor_id": doctor["id"]
     }
+
+
+async def _get_ai_config(db: AsyncSession, doctor: Dict[str, Any]) -> tuple:
+    """
+    获取 AI 配置：优先使用医生自身配置，否则回退到全局设置
+    Get AI config: prefer per-doctor, fallback to global settings
+    """
+    from app.admin.models import SystemSetting
+    
+    # 1. 首先获取全局默认配置
+    # 1. First get global defaults
+    stmt = select(SystemSetting).where(SystemSetting.key.in_([
+        "default_api_key", "default_base_url", "default_model"
+    ]))
+    result = await db.execute(stmt)
+    settings_list = result.scalars().all()
+    settings_map = {s.key: s.value for s in settings_list}
+    
+    # 全局默认值
+    # Global defaults
+    global_api_key = settings_map.get("default_api_key", "")
+    global_base_url = settings_map.get("default_base_url", "")
+    global_model = settings_map.get("default_model", "gpt-3.5-turbo")
+    
+    # 2. 使用医生自身配置覆盖（如果有的话）
+    # 2. Override with per-doctor config if provided
+    api_key = doctor.get("api_key") or doctor.get("apiKey") or global_api_key
+    base_url = doctor.get("base_url") or doctor.get("baseUrl") or global_base_url
+    
+    # 对于 model：只有医生有专门配置且不是旧格式才使用
+    # For model: only use doctor's if explicitly set and not old format
+    doctor_model = doctor.get("model") or ""
+    if doctor_model and not doctor_model.startswith("Pro/"):  # 排除旧 SiliconFlow 格式
+        model = doctor_model
+    else:
+        model = global_model
+    
+    return api_key, base_url, model
+
 
 
 async def _handle_voting_and_elimination(db: AsyncSession, consultation: Consultation, active_doctors: List[Dict[str, Any]]) -> Dict[str, Any]:

@@ -63,5 +63,15 @@ export default {
      */
     updateDoctorsConfig(doctors) {
         return http.put('/admin/doctors-config', { doctors })
+    },
+
+    /**
+     * 获取可用模型列表
+     * Fetch available models from API
+     * @param {string} apiKey - API key
+     * @param {string} baseUrl - Base URL
+     */
+    fetchModels(apiKey, baseUrl) {
+        return http.post('/admin/models', { api_key: apiKey, base_url: baseUrl })
     }
 }

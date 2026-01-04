@@ -59,54 +59,90 @@
 
         <!-- Settings Tabs -->
         <a-tabs v-model:activeKey="activeTab" class="settings-tabs">
-          <a-tab-pane key="providers" tab="AI Providers">
+          <a-tab-pane key="config" tab="AI Configuration">
             <div class="settings-section">
-              <h3>API Keys Configuration</h3>
-              <p class="section-desc">Configure your AI provider API keys. These are stored securely in the database.</p>
+              <h3>Global AI Settings (OpenAI Compatible)</h3>
+              <p class="section-desc">Configure your AI endpoint. Supports any OpenAI-compatible API (official, third-party proxies, etc.).</p>
               
-              <div class="setting-form">
-                <div class="setting-item" v-for="provider in providers" :key="provider.key">
-                  <div class="setting-header">
-                    <span class="provider-name">{{ provider.label }}</span>
-                    <a-tag v-if="getSettingValue(provider.key)" color="green">Configured</a-tag>
-                    <a-tag v-else color="orange">Not Set</a-tag>
-                  </div>
-                  <a-input-group compact>
-                    <a-input 
-                      v-model:value="settingValues[provider.key]" 
-                      :placeholder="provider.placeholder"
-                      type="password"
-                      style="width: calc(100% - 80px)"
+              <a-form layout="vertical">
+                <a-form-item label="Default API Key">
+                  <a-input-password 
+                    v-model:value="settingValues.default_api_key" 
+                    placeholder="sk-..."
+                    size="large"
+                  />
+                </a-form-item>
+                
+                <a-form-item label="Default Base URL">
+                  <a-input 
+                    v-model:value="settingValues.default_base_url" 
+                    placeholder="https://api.openai.com/v1/chat/completions"
+                    size="large"
+                  />
+                  <div class="hint">Leave empty for official OpenAI. Use your proxy URL for third-party services.</div>
+                </a-form-item>
+                
+                <a-form-item label="Default Model">
+                  <div class="model-selector">
+                    <a-auto-complete
+                      v-model:value="settingValues.default_model"
+                      :options="availableModels"
+                      placeholder="Select or type model name..."
+                      style="flex: 1"
+                      size="large"
+                      :filter-option="filterModelOption"
                     />
-                    <a-button type="primary" @click="saveSetting(provider.key)">Save</a-button>
-                  </a-input-group>
-                </div>
-              </div>
+                    <a-button @click="loadModels" :loading="loadingModels" size="large">
+                      Load Models
+                    </a-button>
+                  </div>
+                  <div class="hint">Click "Load Models" to fetch available models from your API, or type manually.</div>
+                </a-form-item>
+                
+                <a-button type="primary" @click="saveGlobalConfig" size="large">Save Global Configuration</a-button>
+              </a-form>
             </div>
           </a-tab-pane>
 
-          <a-tab-pane key="model" tab="Default Model">
+          <a-tab-pane key="triage" tab="Triage Settings">
             <div class="settings-section">
-              <h3>Default AI Model</h3>
-              <p class="section-desc">Set the default AI provider and model for all consultations.</p>
+              <h3>Triage AI Configuration (Optional)</h3>
+              <p class="section-desc">Separate AI settings for triage. Leave empty to use global defaults.</p>
               
               <a-form layout="vertical">
-                <a-form-item label="Default Provider">
-                  <a-select v-model:value="settingValues.default_provider" style="width: 300px">
-                    <a-select-option value="openai">OpenAI</a-select-option>
-                    <a-select-option value="anthropic">Anthropic</a-select-option>
-                    <a-select-option value="gemini">Google Gemini</a-select-option>
-                    <a-select-option value="siliconflow">SiliconFlow (硅基流动)</a-select-option>
-                  </a-select>
-                </a-form-item>
-                <a-form-item label="Default Model Name">
-                  <a-input 
-                    v-model:value="settingValues.default_model" 
-                    placeholder="e.g., gpt-4, claude-3-opus, Pro/THUDM/glm-4-9b-chat"
-                    style="width: 400px"
+                <a-form-item label="Triage API Key">
+                  <a-input-password 
+                    v-model:value="settingValues.triage_api_key" 
+                    placeholder="Leave empty to use global"
+                    size="large"
                   />
                 </a-form-item>
-                <a-button type="primary" @click="saveModelConfig">Save Model Configuration</a-button>
+                
+                <a-form-item label="Triage Base URL">
+                  <a-input 
+                    v-model:value="settingValues.triage_base_url" 
+                    placeholder="Leave empty to use global"
+                    size="large"
+                  />
+                </a-form-item>
+                
+                <a-form-item label="Triage Model">
+                  <div class="model-selector">
+                    <a-auto-complete
+                      v-model:value="settingValues.triage_model"
+                      :options="availableModels"
+                      placeholder="Leave empty to use global"
+                      style="flex: 1"
+                      size="large"
+                      :filter-option="filterModelOption"
+                    />
+                    <a-button @click="loadModels" :loading="loadingModels" size="large">
+                      Load Models
+                    </a-button>
+                  </div>
+                </a-form-item>
+                
+                <a-button type="primary" @click="saveTriageConfig" size="large">Save Triage Configuration</a-button>
               </a-form>
             </div>
           </a-tab-pane>
@@ -114,7 +150,7 @@
           <a-tab-pane key="doctors" tab="Doctor Team">
             <div class="settings-section">
               <h3>AI Doctor Team Configuration</h3>
-              <p class="section-desc">Manage the team of AI doctors participating in consultations.</p>
+              <p class="section-desc">Each doctor can have custom API Key, Base URL, and Model. Leave empty to use global defaults.</p>
               
               <div class="doctors-list">
                 <div 
@@ -123,25 +159,43 @@
                   class="doctor-config-item"
                 >
                   <div class="doc-header">
-                    <span class="doc-name">{{ doc.name }}</span>
-                    <span class="doc-name-cn">{{ doc.name_cn }}</span>
-                    <a-tag :color="doc.status === 'active' ? 'green' : 'default'">
-                      {{ doc.status === 'active' ? 'Active' : 'Inactive' }}
-                    </a-tag>
-                  </div>
-                  <div class="doc-settings">
-                    <a-select v-model:value="doc.provider" style="width: 150px" size="small">
-                      <a-select-option value="openai">OpenAI</a-select-option>
-                      <a-select-option value="anthropic">Anthropic</a-select-option>
-                      <a-select-option value="siliconflow">SiliconFlow</a-select-option>
-                    </a-select>
-                    <a-input v-model:value="doc.model" placeholder="Model" size="small" style="width: 200px" />
+                    <div class="doc-identity">
+                      <span class="doc-name">{{ doc.name }}</span>
+                      <span class="doc-name-cn">{{ doc.name_cn }}</span>
+                    </div>
                     <a-switch 
                       v-model:checked="doc.status" 
                       :checked-value="'active'" 
                       :un-checked-value="'inactive'" 
-                      size="small"
+                      checked-children="Active"
+                      un-checked-children="Off"
                     />
+                  </div>
+                  <div class="doc-settings-grid">
+                    <div class="setting-field">
+                      <label>API Key</label>
+                      <a-input-password 
+                        v-model:value="doc.api_key" 
+                        placeholder="Use global default" 
+                        size="small"
+                      />
+                    </div>
+                    <div class="setting-field">
+                      <label>Base URL</label>
+                      <a-input 
+                        v-model:value="doc.base_url" 
+                        placeholder="Use global default" 
+                        size="small"
+                      />
+                    </div>
+                    <div class="setting-field">
+                      <label>Model</label>
+                      <a-input 
+                        v-model:value="doc.model" 
+                        placeholder="gpt-4, claude-3-opus..."
+                        size="small"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -164,34 +218,59 @@ import adminApi from '@/api/admin'
 const password = ref('')
 const isLoggedIn = ref(false)
 const loading = ref(false)
-const activeTab = ref('providers')
+const activeTab = ref('config')
 
 const status = reactive({
   total_users: 0,
   total_consultations: 0,
   active_consultations: 0,
-  default_provider: 'siliconflow',
-  default_model: 'Pro/THUDM/glm-4-9b-chat'
+  default_model: ''
 })
 
-const providers = [
-  { key: 'openai_api_key', label: 'OpenAI', placeholder: 'sk-...' },
-  { key: 'anthropic_api_key', label: 'Anthropic', placeholder: 'sk-ant-...' },
-  { key: 'gemini_api_key', label: 'Google Gemini', placeholder: 'AIza...' },
-  { key: 'siliconflow_api_key', label: 'SiliconFlow', placeholder: 'sk-...' }
-]
-
+// 统一 AI 配置
+// Unified AI Config
 const settingValues = reactive({
-  openai_api_key: '',
-  anthropic_api_key: '',
-  gemini_api_key: '',
-  siliconflow_api_key: '',
-  default_provider: 'siliconflow',
-  default_model: 'Pro/THUDM/glm-4-9b-chat'
+  default_api_key: '',
+  default_base_url: '',
+  default_model: '',
+  triage_api_key: '',
+  triage_base_url: '',
+  triage_model: ''
 })
 
 const settingsFromServer = ref([])
 const doctorsConfig = ref([])
+
+// 模型加载
+// Model loading
+const availableModels = ref([])
+const loadingModels = ref(false)
+
+const loadModels = async () => {
+  if (!settingValues.default_api_key) {
+    message.warning('Please enter API Key first')
+    return
+  }
+  loadingModels.value = true
+  try {
+    const res = await adminApi.fetchModels(settingValues.default_api_key, settingValues.default_base_url)
+    const data = res.data
+    if (data.success && data.models) {
+      availableModels.value = data.models.map(m => ({ value: m.id, label: m.name }))
+      message.success(`Loaded ${data.models.length} models`)
+    } else {
+      message.error(data.error || 'Failed to load models')
+    }
+  } catch (err) {
+    message.error('Failed to fetch models from API')
+  } finally {
+    loadingModels.value = false
+  }
+}
+
+const filterModelOption = (inputValue, option) => {
+  return option.value.toLowerCase().includes(inputValue.toLowerCase())
+}
 
 // 检查本地存储的 token
 // Check local storage for token
@@ -211,13 +290,14 @@ const handleLogin = async () => {
   loading.value = true
   try {
     const res = await adminApi.login(password.value)
-    if (res.success) {
-      localStorage.setItem('admin_token', res.token)
+    const data = res.data
+    if (data.success) {
+      localStorage.setItem('admin_token', data.token)
       isLoggedIn.value = true
       message.success('Login successful')
       loadDashboardData()
     } else {
-      message.error(res.message || 'Invalid password')
+      message.error(data.message || 'Invalid password')
     }
   } catch (err) {
     message.error('Login failed')
@@ -237,7 +317,7 @@ const loadDashboardData = async () => {
     // 加载状态
     // Load status
     const statusRes = await adminApi.getStatus()
-    Object.assign(status, statusRes)
+    Object.assign(status, statusRes.data)
     
     // 初始化设置
     // Initialize settings
@@ -246,12 +326,17 @@ const loadDashboardData = async () => {
     // 加载设置
     // Load settings
     const settingsRes = await adminApi.getSettings()
-    settingsFromServer.value = settingsRes
+    settingsFromServer.value = settingsRes.data
     
-    // 填充值
-    // Populate values
-    for (const s of settingsRes) {
+    // 填充值 - 不覆盖已有的 secret 值
+    // Populate values - don't overwrite existing secret values with empty
+    for (const s of settingsRes.data) {
       if (settingValues.hasOwnProperty(s.key)) {
+        // 如果是 secret 且后端返回空，保留当前值
+        // If secret and backend returns empty, keep current value
+        if (s.is_secret && !s.value && settingValues[s.key]) {
+          continue
+        }
         settingValues[s.key] = s.value || ''
       }
     }
@@ -259,7 +344,7 @@ const loadDashboardData = async () => {
     // 加载医生配置
     // Load doctors config
     const doctorsRes = await adminApi.getDoctorsConfig()
-    doctorsConfig.value = doctorsRes.doctors
+    doctorsConfig.value = doctorsRes.data.doctors
   } catch (err) {
     console.error('Failed to load dashboard data', err)
   }
@@ -285,14 +370,29 @@ const saveSetting = async (key) => {
   }
 }
 
-const saveModelConfig = async () => {
+const saveGlobalConfig = async () => {
   try {
-    await adminApi.updateSetting('default_provider', settingValues.default_provider)
-    await adminApi.updateSetting('default_model', settingValues.default_model)
-    message.success('Model configuration saved')
+    if (settingValues.default_api_key) {
+      await adminApi.updateSetting('default_api_key', settingValues.default_api_key)
+    }
+    await adminApi.updateSetting('default_base_url', settingValues.default_base_url || '')
+    await adminApi.updateSetting('default_model', settingValues.default_model || '')
+    message.success('Global AI configuration saved')
     loadDashboardData()
   } catch (err) {
-    message.error('Failed to save model config')
+    message.error('Failed to save configuration')
+  }
+}
+
+const saveTriageConfig = async () => {
+  try {
+    await adminApi.updateSetting('triage_api_key', settingValues.triage_api_key || '')
+    await adminApi.updateSetting('triage_base_url', settingValues.triage_base_url || '')
+    await adminApi.updateSetting('triage_model', settingValues.triage_model || '')
+    message.success('Triage configuration saved')
+    loadDashboardData()
+  } catch (err) {
+    message.error('Failed to save triage config')
   }
 }
 
@@ -474,8 +574,14 @@ const saveDoctorsConfig = async () => {
 .doc-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.doc-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .doc-name {
@@ -487,7 +593,30 @@ const saveDoctorsConfig = async () => {
   font-size: 0.9rem;
 }
 
-.doc-settings {
+.doc-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.setting-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.setting-field label {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: #888;
+  margin-top: 4px;
+}
+
+.model-selector {
   display: flex;
   gap: 12px;
   align-items: center;
@@ -496,6 +625,9 @@ const saveDoctorsConfig = async () => {
 @media (max-width: 900px) {
   .status-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .doc-settings-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

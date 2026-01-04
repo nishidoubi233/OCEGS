@@ -24,9 +24,20 @@ class OpenAIProvider(BaseAIProvider):
         调用 OpenAI 兼容接口
         Call OpenAI compatible API
         """
-        # 默认使用 OpenAI 官方 API，如果 base_url 为空
-        # Default to OpenAI official API if base_url is empty
-        url = self.base_url if self.base_url else "https://api.openai.com/v1/chat/completions"
+        # 构建正确的 API URL
+        # Build correct API URL
+        if not self.base_url:
+            url = "https://api.openai.com/v1/chat/completions"
+        else:
+            base = self.base_url.rstrip("/")
+            # 如果已经包含完整路径，直接使用
+            # If already contains full path, use as-is
+            if "/chat/completions" in base:
+                url = base
+            elif base.endswith("/v1"):
+                url = f"{base}/chat/completions"
+            else:
+                url = f"{base}/v1/chat/completions"
         
         headers = {
             "Authorization": f"Bearer {self.api_key}",

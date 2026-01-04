@@ -172,17 +172,26 @@ async def update_setting(
     """
     setting = await db.scalar(select(SystemSetting).where(SystemSetting.key == key))
     
+    # 查找预定义设置
+    # Find predefined setting
+    predefined = next((s for s in SETTING_KEYS if s["key"] == key), None)
+    is_secret = predefined.get("is_secret", False) if predefined else False
+    
+    # 如果是 secret 且新值为空，则跳过更新（用户没改）
+    # If secret and new value is empty, skip update (user didn't change)
+    if is_secret and not update.value:
+        return {"success": True, "message": f"Setting '{key}' unchanged (secret preserved)"}
+    
     if not setting:
         # 如果不存在，查找预定义的设置并创建
         # If not exists, find predefined setting and create
-        predefined = next((s for s in SETTING_KEYS if s["key"] == key), None)
         if not predefined:
             raise HTTPException(status_code=404, detail=f"Setting key '{key}' not found")
         
         setting = SystemSetting(
             key=key,
             value=update.value,
-            is_secret=predefined.get("is_secret", False),
+            is_secret=is_secret,
             description=predefined.get("description", "")
         )
         db.add(setting)
@@ -277,3 +286,57 @@ async def update_doctors_config(
     
     await db.commit()
     return {"success": True, "message": "Doctors config updated"}
+
+
+@router.post("/models")
+async def fetch_available_models(
+    request: schemas.FetchModelsRequest,
+    _: bool = Depends(verify_admin_token)
+):
+    """
+    从 OpenAI 兼容 API 获取可用模型列表
+    Fetch available models from OpenAI-compatible API
+    """
+    import httpx
+    
+    # 构建 models 端点 URL
+    # Build models endpoint URL
+    base_url = (request.base_url or "https://api.openai.com").rstrip("/")
+    
+    # 处理不同的 URL 格式
+    # Handle different URL formats
+    if "/v1/chat/completions" in base_url:
+        models_url = base_url.replace("/v1/chat/completions", "/v1/models")
+    elif base_url.endswith("/v1"):
+        models_url = f"{base_url}/models"
+    else:
+        models_url = f"{base_url}/v1/models"
+    
+    headers = {
+        "Authorization": f"Bearer {request.api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(models_url, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            
+            # 解析模型列表
+            # Parse model list
+            models = []
+            if "data" in data and isinstance(data["data"], list):
+                for m in data["data"]:
+                    model_id = m.get("id") or m.get("name", "unknown")
+                    owned_by = m.get("owned_by", "custom")
+                    models.append({
+                        "id": model_id,
+                        "name": f"{model_id} ({owned_by})"
+                    })
+            
+            return {"success": True, "models": models}
+    except httpx.HTTPStatusError as e:
+        return {"success": False, "error": f"API error: {e.response.status_code}", "models": []}
+    except Exception as e:
+        return {"success": False, "error": str(e), "models": []}

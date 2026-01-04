@@ -56,5 +56,15 @@ export default {
      */
     getEmergencyGuide(id) {
         return http.get(`/consultation/consultations/${id}/emergency-guide`)
+    },
+
+    /**
+     * 发送追问消息
+     * Send follow-up message
+     * @param {string} id - Consultation ID
+     * @param {string} message - Follow-up message
+     */
+    sendFollowUp(id, message) {
+        return http.post(`/consultation/consultations/${id}/reply`, { message })
     }
 }

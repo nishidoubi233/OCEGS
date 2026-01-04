@@ -44,7 +44,7 @@ class Settings(BaseSettings):
     
     # Admin Panel
     # 管理面板密码
-    admin_password: str = "ocegs-admin-2024"
+    admin_password: str = "ocegs-admin-2026"
     
     class Config:
         env_file = ".env"

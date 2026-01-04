@@ -44,17 +44,19 @@ class SystemSetting(Base):
 # 预定义的系统设置键
 # Predefined system setting keys
 SETTING_KEYS = [
-    # AI Providers
-    {"key": "openai_api_key", "description": "OpenAI API Key", "is_secret": True},
-    {"key": "openai_base_url", "description": "OpenAI Base URL (optional)", "is_secret": False},
-    {"key": "anthropic_api_key", "description": "Anthropic API Key", "is_secret": True},
-    {"key": "gemini_api_key", "description": "Google Gemini API Key", "is_secret": True},
-    {"key": "siliconflow_api_key", "description": "SiliconFlow API Key", "is_secret": True},
+    # 统一 AI 配置 (OpenAI 兼容模式)
+    # Unified AI Config (OpenAI Compatible Mode)
+    {"key": "default_api_key", "description": "Default API Key for all AI calls", "is_secret": True},
+    {"key": "default_base_url", "description": "Default Base URL (e.g., https://api.openai.com)", "is_secret": False},
+    {"key": "default_model", "description": "Default Model Name (e.g., gpt-4, claude-3-opus)", "is_secret": False},
     
-    # Default Model Settings
-    {"key": "default_provider", "description": "Default AI Provider (openai/anthropic/gemini/siliconflow)", "is_secret": False},
-    {"key": "default_model", "description": "Default Model Name", "is_secret": False},
+    # 分诊专用配置 (可选，留空则使用全局配置)
+    # Triage-specific config (optional, uses global if empty)
+    {"key": "triage_api_key", "description": "Triage-specific API Key (optional)", "is_secret": True},
+    {"key": "triage_base_url", "description": "Triage-specific Base URL (optional)", "is_secret": False},
+    {"key": "triage_model", "description": "Triage-specific Model (optional)", "is_secret": False},
     
-    # Doctor Team Config (JSON)
+    # Doctor Team Config (JSON) - 每个医生可覆盖 apiKey, baseUrl, model
+    # Doctor Team Config (JSON) - Each doctor can override apiKey, baseUrl, model
     {"key": "doctors_config", "description": "JSON config for AI doctor team", "is_secret": False},
 ]

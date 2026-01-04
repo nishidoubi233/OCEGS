@@ -83,6 +83,28 @@ async def advance_consultation(
         raise HTTPException(status_code=500, detail=f"Error advancing consultation: {str(e)}")
 
 
+@router.post("/{consultation_id}/reply", response_model=dict)
+async def send_follow_up(
+    consultation_id: UUID,
+    req: schemas.FollowUpRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    发送追问消息，让医生们回复
+    Send follow-up message, have doctors respond
+    """
+    consultation = await services.get_consultation_full(db, consultation_id)
+    if not consultation or consultation.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    try:
+        result = await services.handle_follow_up(db, consultation_id, req.message)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error sending follow-up: {str(e)}")
+
+
 @router.get("/my/all", response_model=List[schemas.ConsultationResponse])
 async def list_my_consultations(
     db: AsyncSession = Depends(get_db),

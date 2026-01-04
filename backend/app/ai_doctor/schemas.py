@@ -107,6 +107,15 @@ class ConsultationStep(BaseModel):
     doctor_id: str
     phase: ConsultationStatus
 
+
+class FollowUpRequest(BaseModel):
+    """
+    用户追问请求
+    User follow-up request
+    """
+    message: str = Field(..., min_length=1, description="Follow-up question or message")
+
+
 class TriageRequest(BaseModel):
     """
     分诊请求

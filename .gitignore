@@ -1,32 +1,123 @@
-# Ignore specific files and folders
+# ============================================================
+# Project-specific ignores
+# ============================================================
 ai-doctor-refrence/
 OCEGS_Plan.md
 
-# Node modules
-node_modules/
+# ============================================================
+# Python
+# ============================================================
+# Virtual environments
+venv/
+.venv/
+env/
+.env/
+ENV/
 
-# Environment files
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Distribution / packaging
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+sdist/
+develop-eggs/
+.installed.cfg
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# ============================================================
+# Node.js / Frontend
+# ============================================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ============================================================
+# Environment files (SECRETS!)
+# ============================================================
 .env
 .env.local
 .env.development
+.env.development.local
 .env.test
+.env.test.local
 .env.production
+.env.production.local
 .env.staging
 .env.*.local
 .env.backup
 .env.bak
+*.env
 
-# IDE files
+# ============================================================
+# IDE / Editor files
+# ============================================================
 .idea/
 .vscode/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
+.project
+.classpath
+.settings/
+*.code-workspace
 
-# OS files
+# ============================================================
+# OS generated files
+# ============================================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Build outputs
+# ============================================================
+# Build outputs & Logs
+# ============================================================
 dist/
 build/
 *.log
+logs/
+*.sqlite3
+*.db
+
+# ============================================================
+# Miscellaneous
+# ============================================================
+*.bak
+*.tmp
+*.temp
+.cache/
+tmp/
+temp/

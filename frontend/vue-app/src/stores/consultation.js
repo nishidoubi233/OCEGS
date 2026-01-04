@@ -188,6 +188,39 @@ export const useConsultationStore = defineStore('consultation', {
             } finally {
                 this.loading = false
             }
+        },
+
+        /**
+         * 发送追问消息
+         * Send follow-up message
+         */
+        async sendFollowUp(consultationId, message) {
+            this.loading = true
+            this.error = null
+            try {
+                // Add user message immediately
+                this.messages.push({
+                    id: `followup-${Date.now()}`,
+                    sender_type: 'patient',
+                    content: message,
+                    created_at: new Date().toISOString()
+                })
+
+                // Send to backend
+                const res = await aiDoctorApi.sendFollowUp(consultationId, message)
+
+                // Update consultation status
+                if (this.currentConsultation) {
+                    this.currentConsultation.status = 'DISCUSSING'
+                }
+
+                return res.data
+            } catch (err) {
+                this.error = 'Failed to send follow-up message.'
+                throw err
+            } finally {
+                this.loading = false
+            }
         }
     }
 })

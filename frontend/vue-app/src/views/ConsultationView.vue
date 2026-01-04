@@ -258,11 +258,16 @@ const handlePreTriage = async () => {
 const handleConfirmStart = async () => {
   try {
     const res = await consultStore.startNewConsultation(caseForm.initial_problem)
+    const consultationId = res.data?.id || consultStore.currentConsultation?.id
+    if (!consultationId) {
+      message.error('Failed to get consultation ID.')
+      return
+    }
     currentPhase.value = 'chat'
     message.success('Consultation session created. Discussion starting...')
     // 异步运行整个流程
     // Run full process asynchronously
-    consultStore.runConsultation(res.id)
+    consultStore.runConsultation(consultationId)
   } catch (err) {
     message.error('Failed to start consultation.')
   }
@@ -275,9 +280,14 @@ const handleGetEmergencyGuide = async () => {
     // 首先发起会诊以获取 ID
     // First start consultation to get ID
     const res = await consultStore.startNewConsultation(caseForm.initial_problem)
+    const consultationId = res.data?.id || consultStore.currentConsultation?.id
+    if (!consultationId) {
+      message.error('Failed to get consultation ID.')
+      return
+    }
     // 然后获取急救指南
     // Then fetch emergency guide
-    await consultStore.fetchEmergencyGuide(res.id)
+    await consultStore.fetchEmergencyGuide(consultationId)
     currentPhase.value = 'emergency'
     message.warning('Entering Emergency Guidance Mode.')
   } catch (err) {
