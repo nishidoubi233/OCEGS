@@ -37,7 +37,7 @@
               </a-dropdown>
             </template>
             <template v-else>
-              <router-link to="/login" class="nav-link auth-link">Sign In</router-link>
+              <router-link to="/login" class="nav-link">Sign In</router-link>
             </template>
           </nav>
         </div>
@@ -210,18 +210,15 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  background: var(--primary-weak);
+  padding: 0;
   color: var(--text);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: color 0.2s;
   text-decoration: none;
 }
 
 .user-menu:hover {
-  background: var(--primary);
-  color: white;
+  color: var(--primary);
 }
 
 .user-avatar {
@@ -245,13 +242,13 @@ body {
 /* Auth link styles */
 .auth-link {
   display: inline-block;
-  padding: 8px 20px;
+  padding: 6px 16px;
   border-radius: 6px;
   background: var(--primary);
   color: white !important;
   font-weight: 500;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.2;
   text-decoration: none;
 }
 
