@@ -14,7 +14,7 @@ from app.database import get_db
 from app.config import settings
 from app.admin import schemas
 from app.admin.models import SystemSetting, SETTING_KEYS
-from app.auth.models import User
+from app.users.models import User
 from app.ai_doctor.models import Consultation, ConsultationStatus
 
 
