@@ -231,3 +231,37 @@ def build_final_summary_prompt(
     )
     
     return {"system": system_prompt, "user": user_content}
+
+# ============================================================
+# 分诊系统提示词与构建
+# Triage System Prompt and Construction
+# ============================================================
+
+TRIAGE_SYSTEM_PROMPT = """
+你是一位资深的急诊分诊医生。你的任务是评估患者描述的症状，并给出初步的分诊建议。
+请基于以下维度进行评估：
+1. 严重程度 (Severity): 1-5 级（1级：轻微，不急；5级：极度紧急，危及生命）。
+2. 推荐科室 (Recommended Department): 根据症状推荐最合适的专科。
+3. 紧急处理建议 (Emergency Steps): 如果是高风险情况，简要给出第一步急救建议。
+4. 核心风险点 (Key Risks): 识别可能的重大疾病风险。
+
+请严格仅输出一个 JSON 对象，不要包含任何其它文字或标记。
+JSON 格式如下：
+{
+  "severity": 1-5,
+  "department": "推荐科室名称",
+  "is_emergency": true/false,
+  "emergency_advice": "简要建议",
+  "risks": ["风险1", "风险2"],
+  "summary": "一句话病情结论"
+}
+"""
+
+
+def build_triage_prompt(initial_problem: str) -> Dict[str, str]:
+    """
+    构建分诊提示词
+    Build triage prompt
+    """
+    user_content = f"患者主诉：\n{initial_problem}\n\n请进行专业分诊评估并在 JSON 中返回结果。"
+    return {"system": TRIAGE_SYSTEM_PROMPT, "user": user_content}

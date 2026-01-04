@@ -38,5 +38,14 @@ export default {
      */
     getMyHistory() {
         return http.get('/consultation/consultations/my/all')
+    },
+
+    /**
+     * 进行预检分诊评估
+     * Perform triage evaluation
+     * @param {Object} data - initial_problem
+     */
+    performTriage(data) {
+        return http.post('/consultation/consultations/triage', data)
     }
 }

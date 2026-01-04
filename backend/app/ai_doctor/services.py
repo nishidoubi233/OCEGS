@@ -57,6 +57,42 @@ def parse_vote_json(text: str) -> Optional[Dict[str, Any]]:
 # Core Consultation Services
 # ============================================================
 
+async def perform_triage(db: AsyncSession, initial_problem: str) -> Dict[str, Any]:
+    """
+    进行 AI 分诊评估
+    Perform AI triage evaluation
+    """
+    prompt_data = prompts.build_triage_prompt(initial_problem)
+    
+    # 默认使用 SiliconFlow 或 OpenAI
+    # Default to SiliconFlow or OpenAI for triage
+    from app.config import settings
+    provider_name = "siliconflow" if settings.siliconflow_api_key else "openai"
+    api_key = settings.siliconflow_api_key if provider_name == "siliconflow" else settings.openai_api_key
+    model = "Pro/THUDM/glm-4-9b-chat" if provider_name == "siliconflow" else "gpt-3.5-turbo"
+    
+    provider = AIProviderFactory.get_provider(provider_name, api_key, model)
+    
+    content = await provider.chat_completion([
+        {"role": "system", "content": prompt_data["system"]},
+        {"role": "user", "content": prompt_data["user"]}
+    ])
+    
+    result = parse_vote_json(content) # 复用 JSON 解析逻辑
+    if not result:
+        # 回退默认值
+        # Fallback default
+        result = {
+            "severity": 3,
+            "department": "General Medicine",
+            "is_emergency": False,
+            "emergency_advice": "Please consult a doctor soon.",
+            "risks": ["Unable to assess specific risks"],
+            "summary": "AI was unable to parse triage results clearly."
+        }
+    return result
+
+
 async def create_consultation(
     db: AsyncSession,
     user_id: UUID,
@@ -68,16 +104,31 @@ async def create_consultation(
     发起新问诊
     Create a new consultation
     """
-    # 如果没提供医生配置，使用默认专科医生
-    # Use default presets if no doctors provided
+    # 1. 自动执行分诊
+    # 1. Perform automatic triage
+    triage_result = await perform_triage(db, initial_problem)
+    triage_level = triage_result.get("severity", 3)
+
+    # 2. 如果没提供医生配置，根据分诊科室选择
+    # 2. If no doctors provided, choose based on triage department
     if not doctors:
-        # 默认使用 前 3 个预设医生 (Cardio, Pulmon, Neuro) 作为示例
-        # Use first 3 presets as default example
+        # 简单实现：尝试匹配科室名称到预设
+        matched_doctor = None
+        dept = triage_result.get("department", "").lower()
+        for preset in prompts.DOCTOR_PRESETS:
+            if preset["name"].lower() in dept or preset["name_cn"] in dept:
+                matched_doctor = preset
+                break
+        
+        if not matched_doctor:
+            matched_doctor = prompts.DOCTOR_PRESETS[0] # 默认心血管
+            
         doctors = [
-            {**prompts.DOCTOR_PRESETS[0], "provider": "siliconflow", "model": "Pro/THUDM/glm-4-9b-chat", "status": "active"},
-            {**prompts.DOCTOR_PRESETS[1], "provider": "siliconflow", "model": "Pro/THUDM/glm-4-9b-chat", "status": "active"},
-            {**prompts.DOCTOR_PRESETS[2], "provider": "siliconflow", "model": "Pro/THUDM/glm-4-9b-chat", "status": "active"}
+            {**matched_doctor, "provider": "siliconflow", "model": "Pro/THUDM/glm-4-9b-chat", "status": "active"}
         ]
+        # 如果不是紧急情况，可以多加一个全科建议医生
+        if triage_level < 4:
+            doctors.append({**prompts.DOCTOR_PRESETS[8], "provider": "siliconflow", "model": "Pro/THUDM/glm-4-9b-chat", "status": "active"}) # 儿科/全科
     else:
         # 确保每个医生都有 active 状态
         # Ensure each doctor has active status
@@ -90,14 +141,23 @@ async def create_consultation(
         patient_profile_id=patient_profile_id,
         status=ConsultationStatus.DISCUSSING,
         doctors_config=doctors,
-        triage_level=3 # 默认为中等
+        triage_level=triage_level
     )
     
     db.add(consultation)
     await db.flush()
     
-    # 添加初始主诉消息
-    # Add initial complaint message
+    # 3. 添加分诊结果作为系统第一条消息
+    # 3. Add triage result as first system message
+    triage_msg = ConsultationMessage(
+        consultation_id=consultation.id,
+        sender_type="system",
+        content=f"[Triage Level: {triage_level}] Recommendation: {triage_result.get('department')}. Summary: {triage_result.get('summary')}"
+    )
+    db.add(triage_msg)
+
+    # 4. 添加初始主诉消息
+    # 4. Add initial complaint message
     msg = ConsultationMessage(
         consultation_id=consultation.id,
         sender_type="patient",

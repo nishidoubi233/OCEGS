@@ -98,3 +98,19 @@ async def list_my_consultations(
     stmt = select(Consultation).where(Consultation.user_id == current_user.id).order_by(Consultation.created_at.desc())
     result = await db.execute(stmt)
     return result.scalars().all()
+
+@router.post("/triage", response_model=schemas.TriageResponse)
+async def perform_triage_evaluation(
+    req: schemas.TriageRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    进行 AI 预检分诊评估
+    Perform AI triage evaluation
+    """
+    try:
+        result = await services.perform_triage(db, req.initial_problem)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error performing triage: {str(e)}")

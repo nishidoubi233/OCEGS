@@ -16,10 +16,10 @@
 
     <!-- Main Content -->
     <div class="view-body">
-      <!-- 初始输入 & 会诊展示 -->
-      <!-- Initial Input & Consultation Display -->
+      <!-- 初始输入 & 分诊评估 & 会诊展示 -->
+      <!-- Initial Input & Triage Evaluation & Consultation Display -->
       <div class="consultation-container card">
-        <template v-if="!consultStore.currentConsultation">
+        <template v-if="currentPhase === 'input'">
           <!-- 初始输入表单 -->
           <!-- Initial Input Form -->
           <div class="case-form">
@@ -51,13 +51,69 @@
                   size="large" 
                   block 
                   :loading="consultStore.loading"
-                  @click="handleStart"
+                  @click="handlePreTriage"
                   :disabled="!caseForm.initial_problem.trim()"
                 >
-                  🚀 Start Consultation
+                  🔍 Pre-Triage Assessment
                 </a-button>
               </div>
             </a-form>
+          </div>
+        </template>
+
+        <template v-else-if="currentPhase === 'triage'">
+          <!-- 分诊结果展示 -->
+          <!-- Triage Result Display -->
+          <div class="triage-result-overlay">
+            <div class="triage-card">
+              <div class="triage-header" :class="'level-' + consultStore.triageResult?.severity">
+                <div class="severity-badge">
+                  Level {{ consultStore.triageResult?.severity }}
+                </div>
+                <h3>AI Triage Report</h3>
+              </div>
+              
+              <div class="triage-content">
+                <div class="triage-section">
+                  <label>Summary</label>
+                  <p class="summary-text">{{ consultStore.triageResult?.summary }}</p>
+                </div>
+                
+                <div class="triage-grid">
+                  <div class="grid-item">
+                    <label>Recommended Dept.</label>
+                    <div class="value">{{ consultStore.triageResult?.department }}</div>
+                  </div>
+                  <div class="grid-item">
+                    <label>Emergency Status</label>
+                    <div class="value" :class="{ 'text-danger': consultStore.triageResult?.is_emergency }">
+                      {{ consultStore.triageResult?.is_emergency ? '🚩 EMERGENCY' : '✅ Stable' }}
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="consultStore.triageResult?.is_emergency" class="emergency-advice">
+                  <label>⚠️ Emergency Advice</label>
+                  <p>{{ consultStore.triageResult?.emergency_advice }}</p>
+                </div>
+
+                <div class="risks-section">
+                  <label>Potential Risks</label>
+                  <div class="risk-tags">
+                    <a-tag v-for="risk in consultStore.triageResult?.risks" :key="risk" color="red">
+                      {{ risk }}
+                    </a-tag>
+                  </div>
+                </div>
+              </div>
+
+              <div class="triage-footer">
+                <a-button @click="currentPhase = 'input'">Back to Edit</a-button>
+                <a-button type="primary" :loading="consultStore.loading" @click="handleConfirmStart">
+                  Confirm & Start Consultation
+                </a-button>
+              </div>
+            </div>
           </div>
         </template>
 
@@ -140,6 +196,10 @@ import { message } from 'ant-design-vue'
 
 const consultStore = useConsultationStore()
 
+// 视图状态: 'input', 'triage', 'chat'
+// View phase: 'input', 'triage', 'chat'
+const currentPhase = ref('input')
+
 // 病例输入表单
 // Case input form
 const caseForm = reactive({
@@ -162,11 +222,24 @@ const renderMarkdown = (text) => {
   return marked(text)
 }
 
-// 开始会诊
-// Start consultation
-const handleStart = async () => {
+// 1. 进行预检分诊
+// 1. Perform pre-triage
+const handlePreTriage = async () => {
+  try {
+    await consultStore.triageSymptom(caseForm.initial_problem)
+    currentPhase.value = 'triage'
+    message.info('AI Preliminary Triage complete.')
+  } catch (err) {
+    message.error('Failed to perform triage.')
+  }
+}
+
+// 2. 确认并正式开始会诊
+// 2. Confirm and officially start consultation
+const handleConfirmStart = async () => {
   try {
     const res = await consultStore.startNewConsultation(caseForm.initial_problem)
+    currentPhase.value = 'chat'
     message.success('Consultation session created. Discussion starting...')
     // 异步运行整个流程
     // Run full process asynchronously
@@ -182,7 +255,9 @@ const resetConsultation = () => {
   consultStore.currentConsultation = null
   consultStore.messages = []
   consultStore.summary = null
+  consultStore.triageResult = null
   caseForm.initial_problem = ''
+  currentPhase.value = 'input'
 }
 </script>
 
@@ -427,4 +502,126 @@ const resetConsultation = () => {
 }
 
 .disclaimer-sidebar strong { color: #f5222d; }
+
+.triage-result-overlay {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background-color: #f5f7f9;
+}
+
+.triage-card {
+  width: 100%;
+  max-width: 650px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  overflow: hidden;
+  border: 1px solid #eee;
+}
+
+.triage-header {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: white;
+}
+
+/* Severity Colors */
+.level-1 { background: #52c41a; } /* Success/Green */
+.level-2 { background: #722ed1; } /* Purple */
+.level-3 { background: #1890ff; } /* primary/blue */
+.level-4 { background: #faad14; } /* Warning/Orange */
+.level-5 { background: #f5222d; } /* Danger/Red */
+
+.severity-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  width: fit-content;
+}
+
+.triage-header h3 {
+  margin: 0;
+  color: white;
+  font-size: 1.4rem;
+}
+
+.triage-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.triage-section label,
+.triage-grid .grid-item label,
+.risks-section label,
+.emergency-advice label {
+  display: block;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 6px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.summary-text {
+  font-size: 1.1rem;
+  color: #333;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.triage-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  padding: 16px;
+  background: #f9f9f9;
+  border-radius: 8px;
+}
+
+.grid-item .value {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #222;
+}
+
+.emergency-advice {
+  background: #fff1f0;
+  border: 1px solid #ffa39e;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.emergency-advice p {
+  margin: 0;
+  color: #cf1322;
+  font-weight: 500;
+}
+
+.risk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.triage-footer {
+  padding: 16px 24px;
+  background: #f9f9f9;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.text-danger { color: #f5222d; }
 </style>

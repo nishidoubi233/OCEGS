@@ -106,3 +106,23 @@ class ConsultationStep(BaseModel):
     doctor_name: str
     doctor_id: str
     phase: ConsultationStatus
+
+class TriageRequest(BaseModel):
+    """
+    分诊请求
+    Triage request
+    """
+    initial_problem: str
+
+
+class TriageResponse(BaseModel):
+    """
+    分诊评估响应
+    Triage evaluation response
+    """
+    severity: int = Field(..., ge=1, le=5)
+    department: str
+    is_emergency: bool
+    emergency_advice: Optional[str] = None
+    risks: List[str] = []
+    summary: str

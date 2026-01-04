@@ -22,6 +22,9 @@ export const useConsultationStore = defineStore('consultation', {
         // 是否正在轮询步骤中
         // Is in step polling process
         isAdvancing: false,
+        // 分诊结果
+        // Triage result
+        triageResult: null,
         // 错误信息
         // Error message
         error: null
@@ -141,6 +144,26 @@ export const useConsultationStore = defineStore('consultation', {
                 this.error = 'Error during consultation process.'
             } finally {
                 this.isAdvancing = false
+            }
+        },
+
+        /**
+         * 进行分诊评估
+         * Perform triage evaluation
+         */
+        async triageSymptom(initialProblem) {
+            this.loading = true
+            this.error = null
+            this.triageResult = null
+            try {
+                const res = await aiDoctorApi.performTriage({ initial_problem: initialProblem })
+                this.triageResult = res
+                return res
+            } catch (err) {
+                this.error = 'Failed to perform triage. Please check your network.'
+                throw err
+            } finally {
+                this.loading = false
             }
         }
     }
