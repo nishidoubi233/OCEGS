@@ -147,18 +147,23 @@ class EmergencyContactUpdate(BaseModel):
     is_caretaker: Optional[bool] = None
 
 
-class EmergencyContactResponse(EmergencyContactBase):
+class EmergencyContactResponse(BaseModel):
     """
     紧急联系人响应模式
     Emergency contact response schema
     """
     id: UUID
     patient_id: UUID
+    name: str
+    relationship: str = Field(..., alias="relation_to_patient")
+    phone: str
+    is_caretaker: bool
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 # ============================================================

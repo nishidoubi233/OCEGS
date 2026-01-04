@@ -247,7 +247,7 @@ class EmergencyContact(Base):
     
     # 与患者的关系
     # Relationship to patient
-    relationship = Column(
+    relation_to_patient = Column(
         String(100),
         nullable=False
     )
@@ -292,4 +292,4 @@ class EmergencyContact(Base):
     )
 
     def __repr__(self):
-        return f"<EmergencyContact {self.name} ({self.relationship})>"
+        return f"<EmergencyContact {self.name} ({self.relation_to_patient})>"

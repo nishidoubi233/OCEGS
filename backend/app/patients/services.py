@@ -328,7 +328,7 @@ async def create_emergency_contact(
     contact = EmergencyContact(
         patient_id=patient_id,
         name=contact_data.name,
-        relationship=contact_data.relationship,
+        relation_to_patient=contact_data.relationship,
         phone=contact_data.phone,
         is_caretaker=contact_data.is_caretaker
     )
