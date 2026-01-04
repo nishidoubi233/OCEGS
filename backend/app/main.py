@@ -121,3 +121,7 @@ app.include_router(ai_doctor_router, prefix="/api/consultation", tags=["AI Consu
 # from app.notifications.router import router as notifications_router
 # app.include_router(notifications_router, prefix="/api/notifications", tags=["Notifications"])
 
+# Admin Panel
+# 管理面板路由
+from app.admin.router import router as admin_router
+app.include_router(admin_router, prefix="/api", tags=["Admin"])

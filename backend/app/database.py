@@ -59,6 +59,7 @@ async def init_db():
         from app.users.models import User  # noqa: F401
         from app.patients.models import PatientProfile, MedicalHistory, EmergencyContact  # noqa: F401
         from app.ai_doctor.models import Consultation, ConsultationMessage, ConsultationSummary  # noqa: F401
+        from app.admin.models import SystemSetting  # noqa: F401
         # etc.
         
         # 创建所有表（生产环境使用Alembic迁移）

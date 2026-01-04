@@ -24,6 +24,16 @@ http.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
         }
+
+        // 管理面板 Token
+        // Admin panel token
+        if (config.url?.includes('/admin/') && !config.url?.includes('/admin/login')) {
+            const adminToken = localStorage.getItem('admin_token')
+            if (adminToken) {
+                config.headers.Authorization = `Bearer ${adminToken}`
+            }
+        }
+
         return config
     },
     (error) => {

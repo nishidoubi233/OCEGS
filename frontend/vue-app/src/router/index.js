@@ -38,6 +38,13 @@ const routes = [
     //   name: 'Emergency',
     //   component: () => import('@/views/emergency/EmergencyView.vue'),
     // },
+    // Admin Panel
+    // 管理面板
+    {
+        path: '/admin',
+        name: 'Admin',
+        component: () => import('@/views/AdminView.vue'),
+    },
 ]
 
 const router = createRouter({

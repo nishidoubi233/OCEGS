@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     siliconflow_api_key: str = ""
     
+    # Admin Panel
+    # 管理面板密码
+    admin_password: str = "ocegs-admin-2024"
+    
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
