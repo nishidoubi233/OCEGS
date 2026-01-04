@@ -412,3 +412,58 @@ async def _handle_summarizing(db: AsyncSession, consultation: Consultation, acti
     
     await db.commit()
     return {"status": "completed", "summary": content, "doctor_name": summarizer["name"]}
+
+
+async def generate_emergency_guide(db: AsyncSession, consultation_id: UUID) -> Dict[str, Any]:
+    """
+    生成针对性急救指南
+    Generate targeted emergency guidance
+    """
+    consultation = await get_consultation_full(db, consultation_id)
+    if not consultation:
+        return {"error": "Consultation not found"}
+        
+    initial_problem = ""
+    triage_summary = "极度紧急情况"
+    
+    for msg in consultation.messages:
+        if msg.sender_type == "patient":
+            initial_problem = msg.content
+            break
+            
+    for msg in consultation.messages:
+        if msg.sender_type == "system" and "[Triage Level:" in msg.content:
+            triage_summary = msg.content
+            break
+
+    prompt_data = prompts.build_emergency_prompt(initial_problem, triage_summary)
+    
+    from app.config import settings
+    # 急救指导使用较强的模型
+    # Emergency guide uses a stronger model
+    provider_name = "siliconflow" if settings.siliconflow_api_key else "openai"
+    api_key = settings.siliconflow_api_key if provider_name == "siliconflow" else settings.openai_api_key
+    model = "Pro/THUDM/glm-4-9b-chat" if provider_name == "siliconflow" else "gpt-3.5-turbo"
+    
+    provider = AIProviderFactory.get_provider(provider_name, api_key, model)
+    
+    content = await provider.chat_completion([
+        {"role": "system", "content": prompt_data["system"]},
+        {"role": "user", "content": prompt_data["user"]}
+    ])
+    
+    result = parse_vote_json(content)
+    if not result:
+        # 回退默认紧急指令
+        # Fallback default emergency instructions
+        result = {
+            "title": "Immediate Actions Required",
+            "steps": [
+                {"index": 1, "action": "Call Local Emergency Services", "detail": "Immediately dial your local emergency number (e.g., 120, 911, 999)."},
+                {"index": 2, "action": "Stay Calm and with the Patient", "detail": "Do not leave the patient alone."},
+                {"index": 3, "action": "Check Breathing", "detail": "Ensure the patient's airway is clear."}
+            ],
+            "warnings": ["Do not attempt to give food or water.", "Wait for medical professionals."],
+            "prohibited": ["Do not move the patient unless in immediate danger."]
+        }
+    return result

@@ -47,5 +47,14 @@ export default {
      */
     performTriage(data) {
         return http.post('/consultation/consultations/triage', data)
+    },
+
+    /**
+     * 获取指定会诊的急救指导
+     * Get emergency guide for a consultation
+     * @param {string} id - Consultation ID
+     */
+    getEmergencyGuide(id) {
+        return http.get(`/consultation/consultations/${id}/emergency-guide`)
     }
 }

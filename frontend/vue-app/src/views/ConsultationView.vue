@@ -109,12 +109,30 @@
 
               <div class="triage-footer">
                 <a-button @click="currentPhase = 'input'">Back to Edit</a-button>
+                <a-button 
+                  v-if="consultStore.triageResult?.severity === 5" 
+                  type="primary" 
+                  danger 
+                  :loading="consultStore.loading"
+                  @click="handleGetEmergencyGuide"
+                >
+                  🆘 Get Emergency Guidance
+                </a-button>
                 <a-button type="primary" :loading="consultStore.loading" @click="handleConfirmStart">
                   Confirm & Start Consultation
                 </a-button>
               </div>
             </div>
           </div>
+        </template>
+
+        <template v-else-if="currentPhase === 'emergency'">
+          <!-- 急救指导展示 -->
+          <!-- Emergency Guidance Display -->
+          <EmergencyGuide 
+            :guide="consultStore.emergencyGuide" 
+            @back="currentPhase = 'triage'" 
+          />
         </template>
 
         <template v-else>
@@ -191,13 +209,14 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useConsultationStore } from '@/stores/consultation'
 import ChatDisplay from '@/components/consultation/ChatDisplay.vue'
+import EmergencyGuide from '@/components/consultation/EmergencyGuide.vue'
 import { marked } from 'marked'
 import { message } from 'ant-design-vue'
 
 const consultStore = useConsultationStore()
 
-// 视图状态: 'input', 'triage', 'chat'
-// View phase: 'input', 'triage', 'chat'
+// 视图状态: 'input', 'triage', 'chat', 'emergency'
+// View phase: 'input', 'triage', 'chat', 'emergency'
 const currentPhase = ref('input')
 
 // 病例输入表单
@@ -246,6 +265,23 @@ const handleConfirmStart = async () => {
     consultStore.runConsultation(res.id)
   } catch (err) {
     message.error('Failed to start consultation.')
+  }
+}
+
+// 3. 获取急救指导 (仅限 Severity 5)
+// 3. Get emergency guidance (Severity 5 only)
+const handleGetEmergencyGuide = async () => {
+  try {
+    // 首先发起会诊以获取 ID
+    // First start consultation to get ID
+    const res = await consultStore.startNewConsultation(caseForm.initial_problem)
+    // 然后获取急救指南
+    // Then fetch emergency guide
+    await consultStore.fetchEmergencyGuide(res.id)
+    currentPhase.value = 'emergency'
+    message.warning('Entering Emergency Guidance Mode.')
+  } catch (err) {
+    message.error('Failed to load emergency guidance.')
   }
 }
 

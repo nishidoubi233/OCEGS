@@ -265,3 +265,43 @@ def build_triage_prompt(initial_problem: str) -> Dict[str, str]:
     """
     user_content = f"患者主诉：\n{initial_problem}\n\n请进行专业分诊评估并在 JSON 中返回结果。"
     return {"system": TRIAGE_SYSTEM_PROMPT, "user": user_content}
+
+# ============================================================
+# 急救指导提示词与构建
+# Emergency Guidance Prompt and Construction
+# ============================================================
+
+EMERGENCY_GUIDE_PROMPT = """
+你是一位资深的急诊急救专家。由于患者当前情况极度紧急（分诊等级为 5），你需要立即提供结构化的急救指导。
+请基于患者的主诉，给出清晰、可执行的步骤。
+
+指导要求：
+1. 语言简练，指令化。
+2. 按照执行优先顺序排列。
+3. 重点突出（如：维持呼吸、止血、保持位置等）。
+4. 包含明确的禁止事项（如：不要移动伤者）。
+
+请严格仅输出一个 JSON 对象，格式如下：
+{
+  "title": "急救指导标题",
+  "steps": [
+    {"index": 1, "action": "行动指令", "detail": "详细说明/注意事项"},
+    {"index": 2, "action": "...", "detail": "..."}
+  ],
+  "warnings": ["警告1", "警告2"],
+  "prohibited": ["禁止事项1"]
+}
+"""
+
+
+def build_emergency_prompt(initial_problem: str, triage_summary: str) -> Dict[str, str]:
+    """
+    构建急救指导提示词
+    Build emergency guidance prompt
+    """
+    user_content = (
+        f"患者主诉：\n{initial_problem}\n\n"
+        f"分诊初步结论：\n{triage_summary}\n\n"
+        "请立即生成专业的结构化急救步骤 JSON。"
+    )
+    return {"system": EMERGENCY_GUIDE_PROMPT, "user": user_content}

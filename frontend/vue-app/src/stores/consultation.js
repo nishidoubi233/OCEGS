@@ -25,6 +25,9 @@ export const useConsultationStore = defineStore('consultation', {
         // 分诊结果
         // Triage result
         triageResult: null,
+        // 急救指南
+        // Emergency guide
+        emergencyGuide: null,
         // 错误信息
         // Error message
         error: null
@@ -161,6 +164,25 @@ export const useConsultationStore = defineStore('consultation', {
                 return res
             } catch (err) {
                 this.error = 'Failed to perform triage. Please check your network.'
+                throw err
+            } finally {
+                this.loading = false
+            }
+        },
+
+        /**
+         * 获取急救指南
+         * Fetch emergency guide
+         */
+        async fetchEmergencyGuide(consultationId) {
+            this.loading = true
+            this.error = null
+            try {
+                const res = await aiDoctorApi.getEmergencyGuide(consultationId)
+                this.emergencyGuide = res
+                return res
+            } catch (err) {
+                this.error = 'Failed to load emergency guidance.'
                 throw err
             } finally {
                 this.loading = false

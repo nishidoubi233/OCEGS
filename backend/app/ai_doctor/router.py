@@ -114,3 +114,24 @@ async def perform_triage_evaluation(
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error performing triage: {str(e)}")
+
+
+@router.get("/{consultation_id}/emergency-guide", response_model=schemas.EmergencyGuideResponse)
+async def get_emergency_guide(
+    consultation_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    获取针对该会诊的急救指导
+    Get targeted emergency guidance for this consultation
+    """
+    consultation = await services.get_consultation_full(db, consultation_id)
+    if not consultation or consultation.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    try:
+        result = await services.generate_emergency_guide(db, consultation_id)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error generating emergency guide: {str(e)}")

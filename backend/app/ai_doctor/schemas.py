@@ -126,3 +126,23 @@ class TriageResponse(BaseModel):
     emergency_advice: Optional[str] = None
     risks: List[str] = []
     summary: str
+
+class EmergencyStep(BaseModel):
+    """
+    急救步骤条目
+    Emergency step item
+    """
+    index: int
+    action: str
+    detail: str
+
+
+class EmergencyGuideResponse(BaseModel):
+    """
+    急救指南响应
+    Emergency guide response
+    """
+    title: str
+    steps: List[EmergencyStep]
+    warnings: List[str] = []
+    prohibited: List[str] = []
