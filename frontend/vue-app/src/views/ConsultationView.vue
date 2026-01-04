@@ -10,7 +10,7 @@
         </div>
       </div>
       <div v-if="consultStore.currentConsultation" class="status-badge" :class="consultStore.status">
-        {{ consultStore.status.toUpperCase() }}
+        {{ (consultStore.status || '').toString().toUpperCase() }}
       </div>
     </div>
 

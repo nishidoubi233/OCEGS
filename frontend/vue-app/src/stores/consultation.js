@@ -58,7 +58,7 @@ export const useConsultationStore = defineStore('consultation', {
                     initial_problem: initialProblem,
                     patient_profile_id: patientProfileId
                 })
-                this.currentConsultation = res
+                this.currentConsultation = res.data
 
                 // 初始消息 (主诉)
                 // Initial message
@@ -86,9 +86,9 @@ export const useConsultationStore = defineStore('consultation', {
             this.loading = true
             try {
                 const res = await aiDoctorApi.getConsultation(id)
-                this.currentConsultation = res
-                this.messages = res.messages || []
-                this.summary = res.summary || null
+                this.currentConsultation = res.data
+                this.messages = res.data.messages || []
+                this.summary = res.data.summary || null
             } catch (err) {
                 this.error = 'Failed to load consultation history.'
             } finally {
@@ -107,7 +107,8 @@ export const useConsultationStore = defineStore('consultation', {
             try {
                 let finished = false
                 while (!finished) {
-                    const result = await aiDoctorApi.advanceStep(consultationId)
+                    const res = await aiDoctorApi.advanceStep(consultationId)
+                    const result = res.data
 
                     if (result.status === 'completed') {
                         // 完成
@@ -160,8 +161,8 @@ export const useConsultationStore = defineStore('consultation', {
             this.triageResult = null
             try {
                 const res = await aiDoctorApi.performTriage({ initial_problem: initialProblem })
-                this.triageResult = res
-                return res
+                this.triageResult = res.data
+                return res.data
             } catch (err) {
                 this.error = 'Failed to perform triage. Please check your network.'
                 throw err
@@ -179,8 +180,8 @@ export const useConsultationStore = defineStore('consultation', {
             this.error = null
             try {
                 const res = await aiDoctorApi.getEmergencyGuide(consultationId)
-                this.emergencyGuide = res
-                return res
+                this.emergencyGuide = res.data
+                return res.data
             } catch (err) {
                 this.error = 'Failed to load emergency guidance.'
                 throw err
