@@ -19,25 +19,27 @@
         <p>Chat with our AI medical assistant for health guidance</p>
       </router-link>
 
-      <div class="action-card card disabled">
+      <!-- Health Profile - Step 3 已完成 / Implemented -->
+      <router-link to="/profile" class="action-card card">
         <span class="action-icon">📋</span>
         <h3>Health Profile</h3>
         <p>Manage your medical history and health records</p>
-        <span class="coming-soon">Coming in Step 3</span>
-      </div>
+      </router-link>
 
-      <div class="action-card card disabled">
+      <!-- Emergency Guidance - Step 6 已完成 / Implemented -->
+      <router-link to="/consultation" class="action-card card">
         <span class="action-icon">🚨</span>
         <h3>Emergency Guidance</h3>
         <p>Get immediate first-aid instructions</p>
-        <span class="coming-soon">Coming in Step 6</span>
-      </div>
+        <span class="feature-hint">Via Consultation Triage</span>
+      </router-link>
 
+      <!-- Caretaker Connect - Step 8 未完成 / Not Implemented -->
       <div class="action-card card disabled">
         <span class="action-icon">👥</span>
         <h3>Caretaker Connect</h3>
         <p>Link with family members for emergency alerts</p>
-        <span class="coming-soon">Coming in Step 8</span>
+        <span class="coming-soon">Coming Soon</span>
       </div>
     </div>
 
@@ -62,13 +64,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import http from '@/api/http'
+import axios from 'axios'
 
 const backendStatus = ref('checking')
 
 onMounted(async () => {
   try {
-    const response = await http.get('/health')
+    // 直接请求 /health 而非通过 /api 前缀
+    // Request /health directly, not through /api prefix
+    const response = await axios.get('/health')
     backendStatus.value = response.data.status
   } catch (error) {
     backendStatus.value = 'error'
@@ -155,6 +159,17 @@ onMounted(async () => {
 }
 
 .coming-soon {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 11px;
+  background: #fff3e0;
+  color: #e65100;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.feature-hint {
   position: absolute;
   top: 12px;
   right: 12px;

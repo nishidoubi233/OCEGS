@@ -14,7 +14,14 @@ export default defineConfig({
     port: 5173,
     proxy: {
       // Proxy API requests to backend
+      // 代理 API 请求到后端
       '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+      },
+      // Proxy health check endpoint
+      // 代理健康检查端点
+      '/health': {
         target: 'http://localhost:8000',
         changeOrigin: true,
       },

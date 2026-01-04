@@ -244,11 +244,15 @@ body {
 /* 登录链接样式 */
 /* Auth link styles */
 .auth-link {
-  padding: 6px 16px;
-  border-radius: 20px;
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 6px;
   background: var(--primary);
   color: white !important;
   font-weight: 500;
+  font-size: 14px;
+  line-height: 1.4;
+  text-decoration: none;
 }
 
 .auth-link:hover {
