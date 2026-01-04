@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from typing import List, Optional
-import jwt
+from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import json
 
@@ -53,10 +53,8 @@ def verify_admin_token(authorization: Optional[str] = Header(None)) -> bool:
         if payload.get("type") != "admin":
             raise HTTPException(status_code=403, detail="Invalid admin token")
         return True
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Admin token expired")
-    except jwt.PyJWTError:
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid or expired admin token")
 
 
 @router.post("/login", response_model=schemas.AdminLoginResponse)
