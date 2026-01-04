@@ -24,13 +24,14 @@ const routes = [
         component: () => import('@/views/auth/LoginView.vue'),
         meta: { guest: true },
     },
-    // Step 3: Patient routes
-    // {
-    //   path: '/profile',
-    //   name: 'Profile',
-    //   component: () => import('@/views/patient/ProfileView.vue'),
-    //   meta: { requiresAuth: true },
-    // },
+    // 患者档案路由
+    // Patient profile routes
+    {
+        path: '/profile',
+        name: 'Profile',
+        component: () => import('@/views/patient/ProfileView.vue'),
+        meta: { requiresAuth: true },
+    },
     // Step 6: Emergency routes
     // {
     //   path: '/emergency',

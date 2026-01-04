@@ -1,5 +1,6 @@
-# Ignore ai-doctor-refrence folder
+# Ignore specific files and folders
 ai-doctor-refrence/
+OCEGS_Plan.md
 
 # Node modules
 node_modules/

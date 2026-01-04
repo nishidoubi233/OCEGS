@@ -57,7 +57,7 @@ async def init_db():
         # 导入所有模型以确保它们被注册
         # Import all models here to ensure they're registered
         from app.users.models import User  # noqa: F401
-        # from app.patients.models import PatientProfile, MedicalHistory
+        from app.patients.models import PatientProfile, MedicalHistory, EmergencyContact  # noqa: F401
         # etc.
         
         # 创建所有表（生产环境使用Alembic迁移）

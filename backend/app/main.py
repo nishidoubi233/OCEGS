@@ -100,8 +100,9 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 # app.include_router(users_router, prefix="/api/users", tags=["Users"])
 
 # Step 3: Patients
-# from app.patients.router import router as patients_router
-# app.include_router(patients_router, prefix="/api/patients", tags=["Patients"])
+# 患者档案路由
+from app.patients.router import router as patients_router
+app.include_router(patients_router, prefix="/api/patients", tags=["Patients"])
 
 # Step 4: AI Doctor
 # from app.ai_doctor.router import router as ai_doctor_router

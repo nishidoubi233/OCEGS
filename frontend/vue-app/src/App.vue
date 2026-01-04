@@ -25,8 +25,8 @@
                 </a>
                 <template #overlay>
                   <a-menu>
-                    <a-menu-item key="profile" disabled>
-                      <span>👤 Profile (Coming Soon)</span>
+                    <a-menu-item key="profile" @click="$router.push('/profile')">
+                      <span>👤 Health Profile</span>
                     </a-menu-item>
                     <a-menu-divider />
                     <a-menu-item key="logout" @click="handleLogout">
