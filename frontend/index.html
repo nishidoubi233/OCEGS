@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LingYi MedAI · AI Consultation</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="hero">
+        <div class="welcome">
+          <div class="avatar" aria-hidden="true">🩺</div>
+          <div class="texts">
+            <h1>I am LingYi MedAI (DeepSeek) 👋</h1>
+            <p class="sub">I'm your health assistant, trained on extensive medical literature. Ask me anything about health—if you're unsure, try the example prompts below.</p>
+          </div>
+        </div>
+      </header>
+
+      <main class="chat">
+        <div id="chatMessages" class="chat-messages" aria-live="polite" aria-label="Conversation">
+          <section class="prompt-box" aria-label="Quick Topics">
+            <p class="prompt-header">✨ You can choose the topics below to quickly chat with me:</p>
+            <div class="starter-prompts" role="list" aria-label="Example Prompts">
+              <button class="prompt" role="listitem">What are the symptoms of kidney stones?</button>
+              <button class="prompt" role="listitem">What medicine helps with eczema?</button>
+              <button class="prompt" role="listitem">What are the side effects of aspirin?</button>
+            </div>
+          </section>
+        </div>
+        <div class="bottom-bar">
+          <div class="left-tools">
+            <label class="think-toggle">
+              <input id="deepThink" type="checkbox" />
+              <span>Deep Thinking</span>
+            </label>
+          </div>
+          <form id="composer" class="composer" autocomplete="off">
+            <input id="userInput" name="message" type="text" placeholder="Ask me anything about health" aria-label="Your question" />
+            <button id="sendBtn" type="submit" class="send">Send</button>
+          </form>
+        </div>
+      </main>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
