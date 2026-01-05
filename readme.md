@@ -69,8 +69,8 @@
     - 将其**复制**并重命名为 `.env`。
     - 使用记事本打开 `.env`，修改以下内容：
       - `DATABASE_URL`: `postgresql+asyncpg://用户名:密码@localhost:5432/ocegs`
-      - `SILICONFLOW_API_KEY`: 填入您的 API Key。
-      - `ADMIN_PASSWORD`: 可选修改管理员密码。
+      - `SILICONFLOW_API_KEY`: 填入您的 API Key。(选填，可以在/admin管理面板中配置自定义apikey)
+      - `ADMIN_PASSWORD`: 请务必修改您的管理员密码（密码默认为ocegs-admin-2026,在生产环境内请务必修改）。
 7.  **启动后端** (使用 uvicorn):
     ```bash
     uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -99,6 +99,13 @@
 - 您也可以通过修改 `.env` 中的 `OPENAI_API_KEY` 来切换至官方服务。
 - 更灵活的配置可以通过 **管理员面板** 进行。
 
+### 常用网址(localhost仅为本地开发部署时链接，如果部署成功后请将localhost替换为您的服务器ip或域名)
+- **管理员面板**: `http://localhost:5173/admin`
+- **用户登录**: `http://localhost:5173/login`
+- **用户注册**: `http://localhost:5173/register`
+- **API文档**: `http://localhost:8000/docs`
+
+
 ### 个人测试建议
 如果您只想快速测试，建议在 `initial_problem` 输入中尝试以下两种极端情况：
 1.  "有点感冒，喉咙痛" -> 观察分诊到普通科室。
@@ -123,4 +130,4 @@
 | **医生团队管理** | 启用/禁用 AI 医生、为每个医生配置不同模型 |
 
 ---
-*注：本项目仍在开发中，如有问题请联系开发者。*
+*注：本项目仍在更新中，如有问题请联系开发者。喜欢的话不妨点个star支持一下作者❤*
