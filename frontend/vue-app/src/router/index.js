@@ -93,16 +93,21 @@ router.beforeEach(async (to, from, next) => {
         // Check if user has completed profile
         try {
             const { default: http } = await import('@/api/http')
-            const res = await http.get('/patient/profiles/my')
-            // 如果有 profile 数据，继续导航
+            const res = await http.get('/patients/profile')
             // If has profile data, continue navigation
             if (res.data && res.data.id) {
                 next()
                 return
             }
+            // 有响应但没有有效 profile，重定向到 /profile
+            // Response but no valid profile, redirect to /profile
+            if (to.name !== 'Profile') {
+                next({ name: 'Profile' })
+                return
+            }
         } catch (err) {
-            // 没有找到 profile，重定向到 /profile
-            // Profile not found, redirect to /profile
+            // 404 或其他错误意味着没有 profile
+            // 404 or other error means no profile exists
             if (to.name !== 'Profile') {
                 next({ name: 'Profile' })
                 return
@@ -114,4 +119,3 @@ router.beforeEach(async (to, from, next) => {
 })
 
 export default router
-
