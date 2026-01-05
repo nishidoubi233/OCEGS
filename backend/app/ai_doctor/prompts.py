@@ -164,9 +164,25 @@ def build_full_prompt(
             
     history_text = "\n".join(history_lines) if history_lines else "(No history yet)"
     
+    # Detect patient's language from the most recent patient message
+    # 检测患者最近消息的语言
+    patient_messages = [m["content"] for m in discussion_history if m["type"] == "patient"]
+    last_patient_msg = patient_messages[-1] if patient_messages else ""
+    
+    # Simple language detection: check if mostly Chinese characters
+    # 简单语言检测：检查是否主要是中文字符
+    def is_mostly_chinese(text: str) -> bool:
+        if not text:
+            return False
+        chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        return chinese_chars / max(len(text), 1) > 0.3
+    
+    patient_language = "Chinese" if is_mostly_chinese(last_patient_msg) else "English"
+    
     user_content = (
         f"[Patient Medical Record]\n{case_text}\n\n"
         f"[Discussion History]\n{history_text}\n\n"
+        f"IMPORTANT: The patient is communicating in {patient_language}. You MUST respond in {patient_language} only.\n\n"
         "Please provide your professional analysis and recommendations based on the above information."
     )
     

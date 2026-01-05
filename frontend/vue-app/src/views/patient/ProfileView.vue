@@ -43,8 +43,6 @@
                 <a-select v-model:value="createForm.gender" placeholder="Select gender" size="large">
                   <a-select-option value="male">Male</a-select-option>
                   <a-select-option value="female">Female</a-select-option>
-                  <a-select-option value="other">Other</a-select-option>
-                  <a-select-option value="prefer_not_to_say">Prefer not to say</a-select-option>
                 </a-select>
               </a-form-item>
             </a-col>
@@ -57,7 +55,12 @@
                 label="Date of Birth"
                 :rules="[{ required: true, message: 'Please select your date of birth' }]"
               >
-                <a-date-picker v-model:value="createForm.date_of_birth" style="width: 100%" size="large" />
+                <a-date-picker 
+                  v-model:value="createForm.date_of_birth" 
+                  style="width: 100%" 
+                  size="large" 
+                  :disabled-date="disabledFutureDate"
+                />
               </a-form-item>
             </a-col>
             <a-col :span="12">
@@ -179,12 +182,14 @@
           <a-select v-model:value="editForm.gender">
             <a-select-option value="male">Male</a-select-option>
             <a-select-option value="female">Female</a-select-option>
-            <a-select-option value="other">Other</a-select-option>
-            <a-select-option value="prefer_not_to_say">Prefer not to say</a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item label="Date of Birth">
-          <a-date-picker v-model:value="editForm.date_of_birth" style="width: 100%" />
+          <a-date-picker 
+            v-model:value="editForm.date_of_birth" 
+            style="width: 100%" 
+            :disabled-date="disabledFutureDate"
+          />
         </a-form-item>
         <a-form-item label="Phone">
           <a-input v-model:value="editForm.phone" />
@@ -262,6 +267,12 @@ const loading = ref(true)
 const saving = ref(false)
 const profile = ref(null)
 const hasProfile = computed(() => !!profile.value)
+
+// 禁用今天和未来日期 (用于生日选择)
+// Disable today and future dates (for date of birth)
+const disabledFutureDate = (current) => {
+  return current && current >= new Date().setHours(0, 0, 0, 0)
+}
 
 // 模态框显示状态
 // Modal visibility state

@@ -140,6 +140,8 @@ onMounted(() => {
   padding: 24px;
   background-color: #fff1f0;
   min-height: 100%;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
   display: flex;
   justify-content: center;
 }
