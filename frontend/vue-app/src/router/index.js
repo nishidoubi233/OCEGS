@@ -9,12 +9,13 @@ const routes = [
         path: '/',
         name: 'Home',
         component: () => import('@/views/HomeView.vue'),
+        meta: { requiresProfile: true },
     },
     {
         path: '/consultation',
         name: 'Consultation',
         component: () => import('@/views/ConsultationView.vue'),
-        meta: { requiresAuth: true },
+        meta: { requiresAuth: true, requiresProfile: true },
     },
     // 认证路由
     // Auth routes
@@ -75,15 +76,41 @@ router.beforeEach(async (to, from, next) => {
     // Routes requiring authentication
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
         next({ name: 'Login', query: { redirect: to.fullPath } })
+        return
     }
+
     // 访客专用路由（已登录用户重定向）
     // Guest-only routes (redirect authenticated users)
-    else if (to.meta.guest && authStore.isAuthenticated) {
+    if (to.meta.guest && authStore.isAuthenticated) {
         next({ name: 'Home' })
+        return
     }
-    else {
-        next()
+
+    // 需要填写个人资料的路由
+    // Routes requiring profile completion
+    if (to.meta.requiresProfile && authStore.isAuthenticated) {
+        // 检查用户是否已填写个人资料
+        // Check if user has completed profile
+        try {
+            const { default: http } = await import('@/api/http')
+            const res = await http.get('/patient/profiles/my')
+            // 如果有 profile 数据，继续导航
+            // If has profile data, continue navigation
+            if (res.data && res.data.id) {
+                next()
+                return
+            }
+        } catch (err) {
+            // 没有找到 profile，重定向到 /profile
+            // Profile not found, redirect to /profile
+            if (to.name !== 'Profile') {
+                next({ name: 'Profile' })
+                return
+            }
+        }
     }
+
+    next()
 })
 
 export default router

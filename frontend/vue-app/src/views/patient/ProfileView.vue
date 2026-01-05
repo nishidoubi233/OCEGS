@@ -35,7 +35,11 @@
               </a-form-item>
             </a-col>
             <a-col :span="12">
-              <a-form-item name="gender" label="Gender">
+              <a-form-item 
+                name="gender" 
+                label="Gender"
+                :rules="[{ required: true, message: 'Please select your gender' }]"
+              >
                 <a-select v-model:value="createForm.gender" placeholder="Select gender" size="large">
                   <a-select-option value="male">Male</a-select-option>
                   <a-select-option value="female">Female</a-select-option>
@@ -48,7 +52,11 @@
 
           <a-row :gutter="16">
             <a-col :span="12">
-              <a-form-item name="date_of_birth" label="Date of Birth">
+              <a-form-item 
+                name="date_of_birth" 
+                label="Date of Birth"
+                :rules="[{ required: true, message: 'Please select your date of birth' }]"
+              >
                 <a-date-picker v-model:value="createForm.date_of_birth" style="width: 100%" size="large" />
               </a-form-item>
             </a-col>

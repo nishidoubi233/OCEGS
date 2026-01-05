@@ -89,8 +89,7 @@
             {{ backendStatus === 'healthy' ? 'Connected' : 'Disconnected' }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="Version">0.1.0</a-descriptions-item>
-        <a-descriptions-item label="Step">1 - Infrastructure</a-descriptions-item>
+        <a-descriptions-item label="Version">V1.1.4</a-descriptions-item>
       </a-descriptions>
     </div>
   </div>

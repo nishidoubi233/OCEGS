@@ -225,7 +225,7 @@ async function handleRegister() {
   try {
     await authStore.register(registerForm.email, registerForm.password)
     message.success('Account created successfully!')
-    router.push('/')
+    router.push('/profile')
   } catch (err) {
     // 错误已在store中处理
     // Error already handled in store
