@@ -105,6 +105,7 @@ async def send_follow_up(
         raise HTTPException(status_code=500, detail=f"Error sending follow-up: {str(e)}")
 
 
+
 @router.get("/my/all", response_model=List[schemas.ConsultationResponse])
 async def list_my_consultations(
     db: AsyncSession = Depends(get_db),

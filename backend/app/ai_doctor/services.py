@@ -198,8 +198,13 @@ async def run_next_step(db: AsyncSession, consultation_id: UUID) -> Dict[str, An
     Advance consultation process by one step (Core state machine)
     """
     consultation = await get_consultation_full(db, consultation_id)
-    if not consultation or consultation.status in [ConsultationStatus.COMPLETED, ConsultationStatus.FAILED]:
-        return {"error": "Consultation already finished or not found"}
+    if not consultation or consultation.status == ConsultationStatus.FAILED:
+        return {"error": "Consultation failed or not found"}
+    
+    # 如果状态是 COMPLETED，直接返回完成信息
+    # If status is COMPLETED, return completed (follow-up should reset this to DISCUSSING first)
+    if consultation.status == ConsultationStatus.COMPLETED:
+        return {"status": "completed", "message": "Consultation completed. Send a follow-up to continue."}
 
     # 获取当前活跃医生
     # Get currently active doctors
@@ -216,20 +221,22 @@ async def run_next_step(db: AsyncSession, consultation_id: UUID) -> Dict[str, An
     # 1. 讨论阶段 (DISCUSSING)
     # 1. Discussion Phase
     if consultation.status == ConsultationStatus.DISCUSSING:
-        # 找出下一个该发言的医生 (基于消息历史)
-        # Find next doctor to speak based on history
-        doctor_responses = [m.doctor_id for m in consultation.messages if m.sender_type == "doctor"]
+        # 找到最后一条患者消息的索引
+        # Find index of last patient message
+        last_patient_msg_idx = -1
+        for i, m in enumerate(consultation.messages):
+            if m.sender_type == "patient":
+                last_patient_msg_idx = i
         
-        # 本轮发言过的医生
-        # Doctors who spoke this round
-        spoken_ids = []
-        for d in active_doctors:
-            last_msg = next((m for m in reversed(consultation.messages) if m.doctor_id == d["id"]), None)
-            if last_msg:
-                spoken_ids.append(d["id"])
+        # 找出在最后一条患者消息之后发言的医生
+        # Find doctors who spoke AFTER the last patient message
+        spoken_ids = set()
+        for i, m in enumerate(consultation.messages):
+            if i > last_patient_msg_idx and m.sender_type == "doctor" and m.doctor_id:
+                spoken_ids.add(m.doctor_id)
         
-        # 寻找还没说的
-        # Find who hasn't spoken
+        # 寻找还没回复患者最后消息的医生
+        # Find doctor who hasn't responded to patient's last message
         next_doctor = next((d for d in active_doctors if d["id"] not in spoken_ids), None)
         
         if next_doctor:
@@ -259,6 +266,8 @@ async def handle_follow_up(db: AsyncSession, consultation_id: UUID, message: str
     处理用户追问 - 保存消息并让所有医生再次回复
     Handle user follow-up - save message and have all doctors respond again
     """
+    from sqlalchemy.orm.attributes import flag_modified
+    
     consultation = await get_consultation_full(db, consultation_id)
     if not consultation:
         return {"error": "Consultation not found"}
@@ -278,12 +287,17 @@ async def handle_follow_up(db: AsyncSession, consultation_id: UUID, message: str
     
     # 清除医生本轮已发言标记（通过重置，医生们会再说一轮）
     # Clear doctor spoken flags for this round
-    doctors = consultation.doctors_config
+    # Create new list to ensure SQLAlchemy detects the change
+    doctors = [dict(d) for d in consultation.doctors_config]
     for d in doctors:
         d["spoken_this_round"] = False
     consultation.doctors_config = doctors
     
+    # Flag the JSON field as modified to ensure SQLAlchemy persists it
+    flag_modified(consultation, "doctors_config")
+    
     await db.commit()
+    await db.refresh(consultation)
     
     # 返回成功信息，前端可以继续调用 run_next_step
     # Return success, frontend can continue calling run_next_step

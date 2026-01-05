@@ -50,7 +50,8 @@
           <div 
             v-for="item in historyList" 
             :key="item.id" 
-            class="history-card"
+            class="history-card clickable"
+            @click="loadConsultationDetail(item)"
           >
             <div class="history-card-header">
               <span class="history-date">{{ formatHistoryDate(item.created_at) }}</span>
@@ -65,6 +66,9 @@
                 <span class="label">Doctors:</span>
                 <span class="value">{{ (item.doctors_config || []).map(d => d.name).join(', ') || 'N/A' }}</span>
               </div>
+            </div>
+            <div class="history-card-action">
+              <span class="view-detail">Click to view details →</span>
             </div>
           </div>
         </div>
@@ -206,6 +210,27 @@
               </div>
             </div>
 
+            <!-- Follow-up Input Section (shows when completed or discussing) -->
+            <div class="follow-up-section" v-if="!consultStore.isAdvancing">
+              <div class="follow-up-input">
+                <a-textarea 
+                  v-model:value="followUpMessage" 
+                  placeholder="Ask a follow-up question or provide more information..."
+                  :rows="2"
+                  :disabled="sendingFollowUp"
+                />
+                <a-button 
+                  type="primary"
+                  :loading="sendingFollowUp"
+                  :disabled="!followUpMessage.trim()"
+                  @click="handleSendFollowUp"
+                >
+                  📤 Send
+                </a-button>
+              </div>
+              <p class="follow-up-hint">You can ask follow-up questions and the doctors will respond.</p>
+            </div>
+
             <!-- 最终总结展示 -->
             <!-- Final Summary Display -->
             <div v-if="consultStore.isCompleted && consultStore.summary" class="summary-card">
@@ -327,12 +352,74 @@ const caseForm = reactive({
   initial_problem: ''
 })
 
+// 追问相关状态
+// Follow-up related state
+const followUpMessage = ref('')
+const sendingFollowUp = ref(false)
+
+// 处理追问
+// Handle follow-up submission
+async function handleSendFollowUp() {
+  if (!followUpMessage.value.trim()) return
+  
+  const consultationId = consultStore.currentConsultation?.id
+  if (!consultationId) {
+    message.error('No active consultation')
+    return
+  }
+  
+  sendingFollowUp.value = true
+  try {
+    // Send follow-up to backend
+    await consultStore.sendFollowUp(consultationId, followUpMessage.value.trim())
+    followUpMessage.value = ''
+    message.success('Follow-up sent. Doctors are responding...')
+    
+    // Wait a moment for backend to process
+    await new Promise(r => setTimeout(r, 500))
+    
+    // Force reset isAdvancing flag
+    consultStore.isAdvancing = false
+    
+    // Run consultation again to get doctor responses
+    // Note: Don't call loadConsultation here as runConsultation will update messages
+    await consultStore.runConsultation(consultationId)
+  } catch (err) {
+    console.error('Failed to send follow-up:', err)
+    message.error('Failed to send follow-up')
+  } finally {
+    sendingFollowUp.value = false
+  }
+}
+
 // Load history on mount if tab is history
 onMounted(() => {
   if (activeTab.value === 'history') {
     loadHistory()
   }
 })
+
+// Load consultation detail and switch to chat view
+async function loadConsultationDetail(item) {
+  try {
+    // Fetch full consultation data
+    const res = await aiDoctorApi.getConsultation(item.id)
+    const consultation = res.data
+    
+    // Update store with fetched consultation
+    consultStore.currentConsultation = consultation
+    consultStore.messages = consultation.messages || []
+    
+    // Switch to chat phase to display the conversation
+    activeTab.value = 'new'
+    currentPhase.value = 'chat'
+    
+    message.success('Consultation loaded successfully')
+  } catch (err) {
+    console.error('Failed to load consultation:', err)
+    message.error('Failed to load consultation details')
+  }
+}
 
 // 当前状态文本
 // Current status text
@@ -525,6 +612,10 @@ const resetConsultation = () => {
   transition: all 0.2s;
 }
 
+.history-card.clickable {
+  cursor: pointer;
+}
+
 .history-card:hover {
   border-color: #12c6c6;
   box-shadow: 0 4px 12px rgba(18, 198, 198, 0.1);
@@ -546,6 +637,18 @@ const resetConsultation = () => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.history-card-action {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
+}
+
+.view-detail {
+  font-size: 13px;
+  color: #12c6c6;
+  font-weight: 500;
 }
 
 .history-info-row {
@@ -580,6 +683,29 @@ const resetConsultation = () => {
 .empty-state p {
   font-size: 18px;
   margin-bottom: 16px;
+}
+
+/* Follow-up Section */
+.follow-up-section {
+  padding: 16px 20px;
+  background: #f9fafb;
+  border-top: 1px solid #eee;
+}
+
+.follow-up-input {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.follow-up-input .ant-input {
+  flex: 1;
+}
+
+.follow-up-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #888;
 }
 
 .view-body {
