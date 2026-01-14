@@ -1,137 +1,137 @@
-[English](readme_en.md) · [简体中文](readme.md)
+[English](readme.md) · [简体中文](readme_zhcn.md)
 
 ---
 
-# OCEGS 项目与部署指南 (Project Progress & Deployment Guide)
+# OCEGS Project & Deployment Guide
 
-本文件为您提供 OCEGS 项目的当前开发进度汇总，以及在 Windows 11 环境下从零开始部署系统的手把手教学。
-
----
-
-## 1. 项目汇总 (Project Overview)
-**OCEGS (Online Consultation and Emergency Guidance System)** 是一款集智能预检、专家会诊与急救指导于一体的在线医疗辅助平台。
-
-### 目前已上线的功能 (Current Features):
-1.  **用户账户系统**: 支持用户注册、登录、个人信息维护。
-2.  **健康档案管理**: 支持维护基本健康信息、既往病史、过敏史及紧急联系人。
-3.  **智能预检分诊 (AI Triage)**:
-    - 自动分析主诉症状分级 (Severity 1-5)。
-    - 提供初步诊断建议与推荐科室。
-    - 识别紧急情况并自动引导。
-4.  **专家协同会诊 (AI Panel)**:
-    - 自动匹配 12 个科室的 AI 专家（心血管、神经、儿科等）。
-    - 专家团队多轮讨论、相互纠错与投票决策。
-    - 自动生成结构化的最终诊疗报告。
-5.  **急救指导模块 (Emergency Guide)**:
-    - 针对 Severity 5 的紧急情况生成即时抢救指令。
-    - 根据用户地理位置 (IP) 自动匹配当地急救电话（如 911, 120）。
-    - 支持一键呼叫与报警。
-6.  **管理员面板 (Admin Panel)**:
-    - 通过 `/admin` 进入管理界面。
-    - 支持配置 AI 供应商 API Key、默认模型、医生团队。
+This document provides a summary of the current development progress for the OCEGS project, along with a step-by-step guide for deploying the system from scratch on Windows 11.
 
 ---
 
-## 2. 部署环境准备 (Prerequisites)
-即便您不是开发人员，只要按照以下步骤操作即可。
+## 1. Project Overview
+**OCEGS (Online Consultation and Emergency Guidance System)** is an online medical assistance platform integrating intelligent triage, expert consultation, and emergency guidance.
 
-### 硬件与系统要求:
-- 系统: Windows 11 (或 Windows 10)
-- 网络: 能够访问外部 AI 服务（OpenAI 或 SiliconFlow）
-
-### 软件安装清单:
-1.  **Node.js (用于前端)**: [下载官网](https://nodejs.org/) -> 选择 "LTS" 版本。
-2.  **Python 3.10+ (用于后端)**: [下载官网](https://www.python.org/) -> 安装时务必勾选 **"Add Python to PATH"**。
-3.  **PostgreSQL (数据库)**: [下载官网](https://www.postgresql.org/download/windows/) -> 安装并设置超级用户密码。
+### Current Features:
+1.  **User Account System**: Supports user registration, login, and personal profile management.
+2.  **Health Records Management**: Allows maintenance of basic health information, medical history, allergy history, and emergency contacts.
+3.  **AI Triage**:
+    - Automatically analyzes chief complaints and assigns severity levels (1-5).
+    - Provides preliminary diagnostic suggestions and recommended departments.
+    - Identifies emergencies and provides automatic guidance.
+4.  **AI Expert Panel**:
+    - Automatically matches AI experts from 12 departments (Cardiology, Neurology, Pediatrics, etc.).
+    - The expert team engages in multi-round discussions, mutual error correction, and voting.
+    - Automatically generates a structured final diagnosis report.
+5.  **Emergency Guide Module**:
+    - Generates immediate rescue instructions for Severity 5 emergencies.
+    - Automatically matches local emergency numbers (e.g., 911, 120) based on user's geographic location (IP).
+    - Supports one-click calling and alerts.
+6.  **Admin Panel**:
+    - Access the admin interface via `/admin`.
+    - Supports configuration of AI provider API Keys, default models, and doctor teams.
 
 ---
 
-## 3. 手把手部署步骤 (Setup Guide)
+## 2. Prerequisites
+Even if you are not a developer, you can follow these steps to deploy the system.
 
-### 第一步：数据库配置 (Database Setup)
-1. 打开 PostgreSQL 的管理工具 **pgAdmin 4**。
-2. 登录后，右键 "Databases" -> "Create" -> "Database..."。
-3. 数据库名称输入 `ocegs`，点击保存。
+### Hardware & System Requirements:
+- Operating System: Windows 11 (or Windows 10)
+- Network: Access to external AI services (OpenAI or SiliconFlow)
 
-### 第二步：后端部署 (Backend Setup)
-1.  **打开终端 (CMD 或 PowerShell)**。
-2.  进入后端目录：`cd backend`
-3.  **创建虚拟环境**:
+### Software Installation Checklist:
+1.  **Node.js (for Frontend)**: [Download Here](https://nodejs.org/) -> Select the "LTS" version.
+2.  **Python 3.10+ (for Backend)**: [Download Here](https://www.python.org/) -> Make sure to check **"Add Python to PATH"** during installation.
+3.  **PostgreSQL (Database)**: [Download Here](https://www.postgresql.org/download/windows/) -> Install and set the superuser password.
+
+---
+
+## 3. Setup Guide
+
+### Step 1: Database Setup
+1. Open the PostgreSQL management tool **pgAdmin 4**.
+2. After logging in, right-click "Databases" -> "Create" -> "Database...".
+3. Enter `ocegs` as the database name and click Save.
+
+### Step 2: Backend Setup
+1.  **Open a terminal (CMD or PowerShell)**.
+2.  Navigate to the backend directory: `cd backend`
+3.  **Create a virtual environment**:
     ```bash
     python -m venv venv
     ```
-4.  **激活虚拟环境** (Windows):
+4.  **Activate the virtual environment** (Windows):
     ```bash
     .\venv\Scripts\activate
     ```
-5.  **安装依赖**:
+5.  **Install dependencies**:
     ```bash
     pip install -r requirements.txt
     ```
-6.  **配置文件**:
-    - 在 `backend` 文件夹找到 `.env.example`。
-    - 将其**复制**并重命名为 `.env`。
-    - 使用记事本打开 `.env`，修改以下内容：
-      - `DATABASE_URL`: `postgresql+asyncpg://用户名:密码@localhost:5432/ocegs`
-      - `SILICONFLOW_API_KEY`: 填入您的 API Key。(选填，可以在/admin管理面板中配置自定义apikey)
-      - `ADMIN_PASSWORD`: 请务必修改您的管理员密码（密码默认为ocegs-admin-2026,在生产环境内请务必修改）。
-7.  **启动后端** (使用 uvicorn):
+6.  **Configuration file**:
+    - Find `.env.example` in the `backend` folder.
+    - **Copy** it and rename the copy to `.env`.
+    - Open `.env` with a text editor and modify the following:
+      - `DATABASE_URL`: `postgresql+asyncpg://username:password@localhost:5432/ocegs`
+      - `SILICONFLOW_API_KEY`: Enter your API Key. (Optional, you can configure a custom API key in the /admin panel)
+      - `ADMIN_PASSWORD`: Be sure to change your admin password (default is ocegs-admin-2026; please change it in production environments).
+7.  **Start the backend** (using uvicorn):
     ```bash
     uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
     ```
-    启动成功后，您可以在浏览器访问 `http://localhost:8000/docs` 查看 API 文档。
+    Once started successfully, you can view the API documentation at `http://localhost:8000/docs` in your browser.
 
-### 第三步：前端部署 (Frontend Setup)
-1.  **开启一个新的终端窗口**。
-2.  进入前端目录：`cd frontend/vue-app`
-3.  **安装依赖**:
+### Step 3: Frontend Setup
+1.  **Open a new terminal window**.
+2.  Navigate to the frontend directory: `cd frontend/vue-app`
+3.  **Install dependencies**:
     ```bash
     npm install
     ```
-4.  **启动前端**:
+4.  **Start the frontend**:
     ```bash
     npm run dev
     ```
-5.  **访问系统**: 启动后，终端会显示一个地址（通常是 `http://localhost:5173`），在浏览器打开即可。
+5.  **Access the system**: After starting, the terminal will display an address (usually `http://localhost:5173`). Open it in your browser.
 
 ---
 
-## 4. 常见配置说明 (Configuration Tips)
+## 4. Configuration Tips
 
-### API 配置
-目前系统默认优先使用 **SiliconFlow (硅基流动)** 的模型，因为其速度快且价格亲民（兼容 OpenAI 格式）。
-- 您也可以通过修改 `.env` 中的 `OPENAI_API_KEY` 来切换至官方服务。
-- 更灵活的配置可以通过 **管理员面板** 进行。
+### API Configuration
+Currently, the system defaults to using **SiliconFlow** models because of their speed and affordability (OpenAI API compatible).
+- You can also switch to the official OpenAI service by modifying `OPENAI_API_KEY` in `.env`.
+- More flexible configurations can be made through the **Admin Panel**.
 
-### 常用网址(localhost仅为本地开发部署时链接，如果部署成功后请将localhost替换为您的服务器ip或域名)
-- **管理员面板**: `http://localhost:5173/admin`
-- **用户登录**: `http://localhost:5173/login`
-- **用户注册**: `http://localhost:5173/register`
-- **API文档**: `http://localhost:8000/docs`
+### Common URLs (localhost is only for local development; replace it with your server IP or domain after deployment)
+- **Admin Panel**: `http://localhost:5173/admin`
+- **User Login**: `http://localhost:5173/login`
+- **User Registration**: `http://localhost:5173/register`
+- **API Documentation**: `http://localhost:8000/docs`
 
 
-### 个人测试建议
-如果您只想快速测试，建议在 `initial_problem` 输入中尝试以下两种极端情况：
-1.  "有点感冒，喉咙痛" -> 观察分诊到普通科室。
-2.  "刚才突然胸痛剧烈，呼吸快喘不上来了" -> 观察系统触发红色急救警告。
-
----
-
-## 5. 管理员面板 (Admin Panel)
-
-### 访问方式
-在浏览器地址栏输入：`http://localhost:5173/admin`
-
-### 默认密码
-- 密码：`ocegs-admin-2024` (可在 `.env` 中修改 `ADMIN_PASSWORD`)
-
-### 管理功能
-| 功能 | 说明 |
-|------|------|
-| **系统状态** | 查看总用户数、会诊数、活跃会话 |
-| **AI 供应商配置** | 配置 OpenAI / Anthropic / Gemini / SiliconFlow 的 API Key |
-| **默认模型设置** | 选择系统默认使用的 AI 供应商和模型 |
-| **医生团队管理** | 启用/禁用 AI 医生、为每个医生配置不同模型 |
+### Testing Recommendations
+If you just want to test quickly, try the following two extreme cases in the `initial_problem` input:
+1.  "Slight cold, sore throat" -> Observe triage to a general department.
+2.  "Sudden severe chest pain just now, having trouble breathing" -> Observe system triggering a red emergency alert.
 
 ---
-*注：本项目仍在更新中，如有问题请联系开发者。喜欢的话不妨点个star支持一下作者❤*
+
+## 5. Admin Panel
+
+### Access
+Enter in the browser address bar: `http://localhost:5173/admin`
+
+### Default Password
+- Password: `ocegs-admin-2024` (can be changed in `.env` via `ADMIN_PASSWORD`)
+
+### Admin Functions
+| Function | Description |
+|----------|-------------|
+| **System Status** | View total users, consultations, active sessions |
+| **AI Provider Configuration** | Configure API Keys for OpenAI / Anthropic / Gemini / SiliconFlow |
+| **Default Model Settings** | Select the default AI provider and model for the system |
+| **Doctor Team Management** | Enable/disable AI doctors, configure different models for each doctor |
+
+---
+*Note: This project is still being updated. If you have any questions, please contact the developer. If you like it, please give it a star to support the author ❤*
