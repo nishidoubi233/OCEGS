@@ -1,3 +1,7 @@
+[English](readme_en.md) · [简体中文](readme.md)
+
+---
+
 # OCEGS 项目与部署指南 (Project Progress & Deployment Guide)
 
 本文件为您提供 OCEGS 项目的当前开发进度汇总，以及在 Windows 11 环境下从零开始部署系统的手把手教学。

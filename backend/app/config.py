@@ -42,8 +42,8 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     siliconflow_api_key: str = ""
     
-    # Admin Panel
-    # 管理面板密码
+    # default admin panel password(can be modified in .env file)
+    # 默认管理面板密码(可在.env文件中修改)
     admin_password: str = "ocegs-admin-2026"
     
     class Config:
