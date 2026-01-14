@@ -123,7 +123,7 @@ If you just want to test quickly, try the following two extreme cases in the `in
 Enter in the browser address bar: `http://localhost:5173/admin`
 
 ### Default Password
-- Password: `ocegs-admin-2024` (can be changed in `.env` via `ADMIN_PASSWORD`)
+- Password: `ocegs-admin-2026` (can be changed in `.env` via `ADMIN_PASSWORD`)
 
 ### Admin Functions
 | Function | Description |

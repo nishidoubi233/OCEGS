@@ -123,7 +123,7 @@
 在浏览器地址栏输入：`http://localhost:5173/admin`
 
 ### 默认密码
-- 密码：`ocegs-admin-2024` (可在 `.env` 中修改 `ADMIN_PASSWORD`)
+- 密码：`ocegs-admin-2026` (可在 `.env` 中修改 `ADMIN_PASSWORD`)
 
 ### 管理功能
 | 功能 | 说明 |
