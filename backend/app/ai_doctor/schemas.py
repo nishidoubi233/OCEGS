@@ -63,7 +63,7 @@ class ConsultationCreate(ConsultationBase):
     """
     # 讨论的初始问题
     # Initial problem for discussion
-    initial_problem: str
+    initial_problem: str = Field(..., min_length=1, max_length=10000, description="Initial problem for discussion")
     # 医生列表 (默认从后端配置，或由前端指定)
     # List of doctors (default from backend or specified by frontend)
     doctors: Optional[List[Dict[str, Any]]] = None
@@ -121,7 +121,7 @@ class TriageRequest(BaseModel):
     分诊请求
     Triage request
     """
-    initial_problem: str
+    initial_problem: str = Field(..., min_length=1, max_length=10000, description="Initial problem for triage")
 
 
 class TriageResponse(BaseModel):
