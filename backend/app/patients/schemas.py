@@ -2,11 +2,43 @@
 患者档案数据模式（Pydantic）
 Patient profile Pydantic schemas for request/response validation
 """
+import re
 from datetime import date, datetime
 from typing import Optional, List
 from uuid import UUID
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from app.patients.models import Gender, MedicalConditionStatus
+
+
+# ============================================================
+# 共用验证函数
+# Shared Validation Functions
+# ============================================================
+
+def validate_name(value: str) -> str:
+    """
+    验证姓名：不能为纯空格，必须包含至少一个字母（支持中英文及其他语言）
+    Validate name: cannot be whitespace-only, must contain at least one letter
+    """
+    if not value or not value.strip():
+        raise ValueError("Name cannot be empty or whitespace-only")
+    
+    # 检查是否包含至少一个 Unicode 字母 (支持中英文、阿拉伯语等)
+    # Check for at least one Unicode letter (supports Chinese, English, Arabic, etc.)
+    if not re.search(r'\p{L}', value, re.UNICODE):
+        # 如果 \p{L} 不支持，使用备用方案
+        # Fallback if \p{L} is not supported
+        try:
+            import regex
+            if not regex.search(r'\p{L}', value):
+                raise ValueError("Name must contain at least one letter")
+        except ImportError:
+            # 简单备用方案：检查是否有任何非数字非空格字符
+            # Simple fallback: check for any non-digit non-space character
+            if value.strip().isdigit():
+                raise ValueError("Name cannot be purely numeric")
+    
+    return value.strip()
 
 
 # ============================================================
@@ -24,6 +56,13 @@ class PatientProfileBase(BaseModel):
     date_of_birth: Optional[date] = Field(None, description="Date of birth")
     phone: Optional[str] = Field(None, max_length=50, description="Phone number")
     address: Optional[str] = Field(None, description="Address")
+
+    # 姓名验证器
+    # Name validator
+    @field_validator('full_name')
+    @classmethod
+    def validate_full_name(cls, v: str) -> str:
+        return validate_name(v)
 
 
 class PatientProfileCreate(PatientProfileBase):
@@ -44,6 +83,15 @@ class PatientProfileUpdate(BaseModel):
     date_of_birth: Optional[date] = None
     phone: Optional[str] = Field(None, max_length=50)
     address: Optional[str] = None
+
+    # 姓名验证器 (仅当提供时验证)
+    # Name validator (only validate when provided)
+    @field_validator('full_name')
+    @classmethod
+    def validate_full_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            return validate_name(v)
+        return v
 
 
 class PatientProfileResponse(PatientProfileBase):
@@ -127,6 +175,13 @@ class EmergencyContactBase(BaseModel):
     phone: str = Field(..., min_length=1, max_length=50, description="Phone number")
     is_caretaker: bool = Field(default=False, description="Is caretaker (receives notifications)")
 
+    # 姓名验证器
+    # Name validator
+    @field_validator('name')
+    @classmethod
+    def validate_contact_name(cls, v: str) -> str:
+        return validate_name(v)
+
 
 class EmergencyContactCreate(EmergencyContactBase):
     """
@@ -145,6 +200,15 @@ class EmergencyContactUpdate(BaseModel):
     relationship: Optional[str] = Field(None, min_length=1, max_length=100)
     phone: Optional[str] = Field(None, min_length=1, max_length=50)
     is_caretaker: Optional[bool] = None
+
+    # 姓名验证器 (仅当提供时验证)
+    # Name validator (only validate when provided)
+    @field_validator('name')
+    @classmethod
+    def validate_contact_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            return validate_name(v)
+        return v
 
 
 class EmergencyContactResponse(BaseModel):
