@@ -2,7 +2,6 @@
 患者档案数据模式（Pydantic）
 Patient profile Pydantic schemas for request/response validation
 """
-import re
 from datetime import date, datetime
 from typing import Optional, List
 from uuid import UUID
@@ -23,22 +22,22 @@ def validate_name(value: str) -> str:
     if not value or not value.strip():
         raise ValueError("Name cannot be empty or whitespace-only")
     
-    # 检查是否包含至少一个 Unicode 字母 (支持中英文、阿拉伯语等)
-    # Check for at least one Unicode letter (supports Chinese, English, Arabic, etc.)
-    if not re.search(r'\p{L}', value, re.UNICODE):
-        # 如果 \p{L} 不支持，使用备用方案
-        # Fallback if \p{L} is not supported
-        try:
-            import regex
-            if not regex.search(r'\p{L}', value):
-                raise ValueError("Name must contain at least one letter")
-        except ImportError:
-            # 简单备用方案：检查是否有任何非数字非空格字符
-            # Simple fallback: check for any non-digit non-space character
-            if value.strip().isdigit():
-                raise ValueError("Name cannot be purely numeric")
+    stripped = value.strip()
     
-    return value.strip()
+    # 检查是否为纯数字
+    # Check if purely numeric
+    if stripped.isdigit():
+        raise ValueError("Name cannot be purely numeric")
+    
+    # 检查是否包含至少一个字母（使用 unicodedata 检测 Unicode 字母类别）
+    # Check for at least one letter using unicodedata
+    import unicodedata
+    has_letter = any(unicodedata.category(c).startswith('L') for c in stripped)
+    
+    if not has_letter:
+        raise ValueError("Name must contain at least one letter")
+    
+    return stripped
 
 
 # ============================================================
